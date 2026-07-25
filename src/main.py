@@ -4,7 +4,6 @@ from textrank import rank_sentences, generate_summary
 from pathlib import Path
 
 text = read_text("AI.txt")
-text = read_text("Tech.txt")
 
 sentences = split_sentences(text)
 
