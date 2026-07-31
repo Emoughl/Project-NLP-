@@ -1,7 +1,4 @@
-from asyncio import graph
-
 import networkx as nx
-from similarity import sentence_similarity
 
 def rank_sentences(similarity_matrix, sentences):
     # Bước 1: Xây dựng đồ thị
