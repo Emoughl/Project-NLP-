@@ -1,42 +1,29 @@
+from asyncio import graph
+
 import networkx as nx
 from similarity import sentence_similarity
 
 def rank_sentences(similarity_matrix, sentences):
-    # Xếp hạng các câu bằng thuật toán PageRank'
+    # Bước 1: Xây dựng đồ thị
+    graph = nx.from_numpy_array(similarity_matrix)
 
-    # Mục 4 :Biểu diễn văn bản thành đồ thị'
-    graph = nx.from_numpy_array(similarity_matrix) 
-
-    # Mục 5 :Xếp hạng câu trong đồ thị theo mức độ quan trọng
-    scores = nx.pagerank(graph)
-
-    # Mục 8 : Cải tiến 1 - Phạt câu quá dài
-    for i in scores:
-        length = len(sentences[i].split())
-
-        if length > 60:
-            scores[i] *= 0.7
-
-        if length > 90:
-            scores[i] *= 0.5
-
-    # Mục 8 : Cải tiến 2: Cộng điểm vị trí câu (position score)
-    n = len(sentences)
-
-    for i in scores:
-        position_score = 1 - i / n
-        scores[i] = 0.8 * scores[i] + 0.2 * position_score
+    # Bước 2: Xếp hạng bằng PageRank
+    scores = nx.pagerank(
+    graph,
+    alpha=0.85,
+    weight="weight",
+    max_iter=500
+    )
 
     return scores
 
-def generate_summary(sentences, scores, top_n=3):
+def generate_summary(sentences, scores, similarity_matrix, top_n=18):
 
     if not sentences:
         return []
 
     top_n = min(top_n, len(sentences))
 
-    #Mục 6 :Lấy được tóm tắt sơ bộ
     ranked = sorted(
         scores.items(),
         key=lambda item: item[1],
@@ -49,22 +36,10 @@ def generate_summary(sentences, scores, top_n=3):
 
         sentence = sentences[index].strip()
 
-        # Mục 8 : Cải tiến 3 : Loại bỏ hẳn câu quá dài (>80 từ) 
-        if len(sentence.split()) > 80:
-            continue
-
-        # Mục 8 : Cải tiến 4 : Lọc câu liệt kê
-        if sentence.count(";") >= 3:
-            continue
-
-        # Mục 8 : Cải tiến 5 : Chống trùng ý
         duplicate = False
-
-        for _, selected in summary:
-
-            sim = sentence_similarity(sentence, selected)
-
-            if sim > 0.65:
+        for selected_index, _ in summary:
+            sim = similarity_matrix[index][selected_index]
+            if sim > 0.9:
                 duplicate = True
                 break
 
@@ -75,7 +50,5 @@ def generate_summary(sentences, scores, top_n=3):
 
         if len(summary) == top_n:
             break
-
-    summary.sort(key=lambda x: x[0])
 
     return [sentence for _, sentence in summary]

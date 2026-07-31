@@ -1,18 +1,26 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import similarity
 
 
 def build_tfidf(sentences):
-    #Chuyển danh sách câu thành ma trận TF-IDF'
-    vectorizer = TfidfVectorizer()
+    vectorizer = TfidfVectorizer(
+    stop_words="english",
+    lowercase=True,
+    ngram_range=(1, 2),
+    min_df=2,
+    max_df=0.9,
+    norm="l2"
+    )
+    tfidf = vectorizer.fit_transform(sentences)
+    return tfidf, vectorizer
 
-    tfidf_matrix = vectorizer.fit_transform(sentences)
 
-    return tfidf_matrix, vectorizer
+def build_similarity_matrix(tfidf):
 
-#Mục 4 :Biểu diễn văn bản thành đồ thị'
-def build_similarity_matrix(tfidf_matrix):
-    #Tính ma trận độ tương đồng giữa các câu'
-    similarity_matrix = cosine_similarity(tfidf_matrix)
+    similarity = cosine_similarity(tfidf)
 
-    return similarity_matrix
+    np.fill_diagonal(similarity, 0)
+
+    return similarity

@@ -1,37 +1,49 @@
-from underthesea import sent_tokenize
 from pathlib import Path
 import re
 
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+DATA_DIR = (
+    BASE_DIR
+    / "data"
+    / "demo"
+    / "Data_DUC_2002"
+    / "DUC_TEXT"
+    / "train"
+)
 
 def read_text(filename):
-    #Đọc nội dung file txt
-    file_path = Path(__file__).parent.parent / "data" / "raw" / filename
+    file_path = DATA_DIR / filename
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        text = f.read()
-        # Xóa các tham chiếu trong văn bản, ví dụ: [1], [2], [3], ...
-        text = re.sub(r"\[\d+\]", "", text)
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
 
-    return text
 
+def get_all_files():
+    files = sorted(DATA_DIR.glob("*"))
+
+    return [
+        file.name
+        for file in files
+        if file.is_file()
+    ]
+    
 
 def split_sentences(text):
-    # Tách văn bản thành các câu, gộp lại các câu bị tách nhầm do chứa dấu ngoặc kép chưa cân bằng
-    raw_sentences = sent_tokenize(text)
 
-    sentences = []
-    buffer = ""
+    pattern = r"<s[^>]*>(.*?)</s>"
 
-    for s in raw_sentences:
-        buffer = f"{buffer} {s}".strip() if buffer else s
+    sentences = re.findall(
+        pattern,
+        text,
+        flags=re.DOTALL
+    )
 
-        # Nếu số dấu " trong buffer là chẵn -> câu đã trọn vẹn
-        if buffer.count('"') % 2 == 0:
-            sentences.append(buffer)
-            buffer = ""
-
-    # Phòng trường hợp cuối văn bản vẫn còn buffer dở dang
-    if buffer:
-        sentences.append(buffer)
+    sentences = [
+        re.sub(r"\s+", " ", s).strip()
+        for s in sentences
+    ]
 
     return sentences
