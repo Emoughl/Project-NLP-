@@ -1,38 +1,127 @@
-# Wikipedia use TextRank
+# 📝 Natural Language Processing Project
 
-Đồ án môn Xử lý ngôn ngữ tự nhiên
+## 📌 Project Information
 
-Đề tài:
-Xây dựng hệ thống tóm tắt bằng thuật toán TextRank.
+| Item | Description |
+|------|-------------|
+| **Course** | Natural Language Processing |
+| **Project** | Build a Text Summarization System using the TextRank Algorithm |
+| **Programming Language** | Python |
+| **Algorithm** | TextRank (Graph-based Extractive Summarization) |
 
-Ngôn ngữ:
-Python
+---
 
-Thuật toán:
-TextRank
+# 🎯 Project Objective
 
+Develop an **extractive text summarization system** that automatically identifies and extracts the most important sentences from a document using the **TextRank** algorithm.
 
-Tiêu chí 1
-Mục tiêu bài toán
-Xác định input/output
+### Input
+- DUC_TEXT dataset
 
-Input: DUC_TEXT
-Output: Bản tóm tắt văn bản (summary.txt)
+### Output
+- `summary.txt` (Generated summary)
 
-Tiêu chí 2
-Phương pháp tiếp cận : Graph-based Text Summarization (TextRank)
+---
 
-Tiêu chí 3
-6 Step in main.py
+# 📖 Methodology
 
-Tiêu chí 4 
-5 đặc trưng Textrank và Vector
+The project adopts a **Graph-based Text Summarization** approach.
 
-Tiêu chí 5
-Áp dụng phương pháp xếp hạng : Textrank
+Each sentence is represented as a node in a graph.
 
-Tiêu chí 6
-Lấy được tóm tắt
+The similarity between sentences is calculated using **TF-IDF** and **Cosine Similarity**.
 
+The **TextRank (PageRank)** algorithm is then applied to rank sentence importance, and the highest-ranked sentences are selected to generate the final summary.
 
-Tiêu chí 7 (đánh giá ROUGE)
+---
+
+# ⚙️ Project Workflow (main.py)
+
+The program follows six main steps:
+
+1. 📂 Read data from the **DUC_TEXT** dataset.
+2. 🧹 Preprocess the text and split it into sentences.
+3. 📊 Build TF-IDF vectors.
+4. 🔗 Compute the sentence similarity matrix.
+5. ⭐ Rank sentences using the **TextRank** algorithm.
+6. 📝 Generate and save the summary.
+
+---
+
+# 🔍 TextRank Features
+
+The implementation includes the following features:
+
+- TF-IDF vectorization
+- Stop-word removal
+- Unigram & Bigram representation
+- Sentence similarity using Cosine Similarity
+- Sentence position weighting
+
+---
+
+# 🏆 Sentence Ranking
+
+Sentence importance is calculated using the **TextRank (PageRank)** algorithm.
+
+Higher-ranked sentences are selected to produce the final extractive summary.
+
+---
+
+# 📄 Output
+
+```
+summary.txt
+```
+
+Contains the generated summary of the input document.
+
+---
+
+# 📈 Evaluation
+
+The generated summaries are evaluated using **ROUGE** metrics.
+
+Evaluation includes:
+
+- ROUGE-1
+- ROUGE-2
+- ROUGE-L
+
+These metrics compare the generated summary with the reference summary provided in the DUC dataset.
+
+---
+
+# 📂 Project Structure
+
+```
+Project/
+│
+├── data/
+│   ├──demo/
+│       ├── DUC_TEXT/
+│       └── DUC_SUM/
+│
+├── output/
+│   └── summary.txt
+│
+├── src/
+│   ├── evaluate.py
+│   ├── main.py
+│   ├── preprocess.py
+│   ├── similarity.py
+│   ├── textrank.py
+│   └── vector.py
+│
+└── README.md
+```
+
+---
+
+# 🚀 Technologies
+
+- Python
+- scikit-learn
+- NetworkX
+- NumPy
+- ROUGE

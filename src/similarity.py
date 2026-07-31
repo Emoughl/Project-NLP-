@@ -3,7 +3,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 def sentence_similarity(sentence1, sentence2):
-    # Tính độ tương đồng giữa hai câu bằng TF-IDF + Cosine Similarity.
+    #Calculate the similarity between two sentences using TF-IDF and Cosine Similarity.
 
     vectorizer = TfidfVectorizer()
 

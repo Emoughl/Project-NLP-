@@ -10,7 +10,6 @@ REFERENCE_DIR = (
     BASE_DIR
     / "data"
     / "demo"
-    / "Data_DUC_2002"
     / "DUC_SUM"
 )
 

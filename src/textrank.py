@@ -1,10 +1,10 @@
 import networkx as nx
 
 def rank_sentences(similarity_matrix):
-    # Đặc trưng 5: Biểu diễn văn bản thành đồ thị
+    #Feature 5: Represent text as a graph
     graph = nx.from_numpy_array(similarity_matrix)
 
-    # Xếp hạng mức độ quan trọng của các câu bằng PageRank
+    #Rank the importance of sentences using PageRank
     scores = nx.pagerank(
         graph,
         alpha=0.85,
@@ -14,7 +14,7 @@ def rank_sentences(similarity_matrix):
 
     return scores
 
-# Chọn các câu có điểm cao nhất để tạo bản tóm tắt
+#Choose the top sentences to create a summary
 def generate_summary(sentences, scores, similarity_matrix, top_n=18):
 
     if not sentences:

@@ -10,31 +10,29 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 files = get_all_files()
 
-print(f"Tổng số file: {len(files)}")
-
 for input_file in files:
 
-    print(f"Đang xử lý: {input_file}")
+    #print(f"Đang xử lý: {input_file}")
 
-    # Bước 1: Đọc dữ liệu từ tập DUC_TEXT
+    #Step 1: Read data from the DUC_TEXT dataset
     text = read_text(input_file)
 
-    # Bước 2: Tiền xử lý, tách văn bản thành các câu
+    #Step 2: Text Preprocessing and Sentence Segmentation
     sentences = split_sentences(text)
 
     if len(sentences) == 0:
         continue
 
-    # Bước 3: Biểu diễn câu bằng TF-IDF
+    #Step 3: Represent sentences using TF-IDF
     tfidf_matrix, vectorizer = build_tfidf(sentences)
 
-    # Bước 4: Tính độ tương đồng giữa các câu
+    #Step 4: Calculate similarity between sentences
     similarity_matrix = build_similarity_matrix(tfidf_matrix)
 
-    # Bước 5: Xếp hạng câu bằng thuật toán TextRank
+    #Step 5: Rank sentences using TextRank algorithm
     scores = rank_sentences(similarity_matrix)
 
-    # Bước 6: Sinh bản tóm tắt
+    #Step 6: Generate summary
     summary = generate_summary(
         sentences,
         scores,

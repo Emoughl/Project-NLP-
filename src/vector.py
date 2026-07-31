@@ -4,29 +4,28 @@ import numpy as np
 
 
 def build_tfidf(sentences):
-    # Đặc trưng 1: TF-IDF
+    #Feature 1: TF-IDF (Term Frequency–Inverse Document Frequency)
     vectorizer = TfidfVectorizer(
-        # Đặc trưng 2: Loại bỏ stop words    
+        #Feature 2: Remove stop words
         stop_words="english",
-        lowercase=True,
-        # Đặc trưng 3: Sử dụng unigram và bigram
-        ngram_range=(1, 2),
-        min_df=2,
-        max_df=0.9,
-        norm="l2"
+        lowercase=True, #Convert all words to lowercase
+        #Feature 3: Use unigram and bigram
+        ngram_range=(1, 2), #Get 1 word or phrase
+        min_df=2, #If word appears in less than 2 sentences, it will be removed
+        max_df=0.9, #If word appears in more than 90% of sentences, it will be removed
+        norm="l2"# Normalize the vector to have unit norm
     )
-    tfidf = vectorizer.fit_transform(sentences)
+    tfidf = vectorizer.fit_transform(sentences) #
     return tfidf, vectorizer
 
 
 def build_similarity_matrix(tfidf):
-    # Xây dựng ma trận độ tương đồng giữa các câu bằng Cosine Similarity
+    #Build similarity matrix between sentences using Cosine Similarity
     similarity = cosine_similarity(tfidf)
 
-    # Tiêu chí 8:
-    # Cải tiến - Bổ sung trọng số vị trí vào đồ thị
-    # Các câu ở đầu văn bản được ưu tiên hơn
-
+    # Feature 8:
+    # Improvement - Add position weights to the graph
+    # Sentences at the beginning of the text are given higher priority
     n = similarity.shape[0]
 
     for i in range(n):
