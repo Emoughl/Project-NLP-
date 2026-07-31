@@ -9,7 +9,6 @@ OUTPUT_DIR = BASE_DIR / "output"
 REFERENCE_DIR = (
     BASE_DIR
     / "data"
-    / "demo"
     / "DUC_SUM"
 )
 

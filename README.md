@@ -98,9 +98,8 @@ These metrics compare the generated summary with the reference summary provided 
 Project/
 │
 ├── data/
-│   ├──demo/
-│       ├── DUC_TEXT/
-│       └── DUC_SUM/
+│   ├── DUC_TEXT/
+│   └── DUC_SUM/
 │
 ├── output/
 │   └── summary.txt
