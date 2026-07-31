@@ -46,4 +46,4 @@ for input_file in files:
         for sentence in summary:
             f.write(sentence + "\n")
 
-print("\nHoàn thành!")
+print("\nFinished!")

@@ -57,20 +57,20 @@ for summary_file in OUTPUT_DIR.glob("*_summary.txt"):
 
     scores_all.append(score)
 
-    print("=" * 60)
-    print(doc_name)
+    # print("=" * 60)
+    # print(doc_name)
 
-    print(
-        f"ROUGE-1 : {score['rouge1'].fmeasure:.4f}"
-    )
+    # print(
+    #     f"ROUGE-1 : {score['rouge1'].fmeasure:.4f}"
+    # )
 
-    print(
-        f"ROUGE-2 : {score['rouge2'].fmeasure:.4f}"
-    )
+    # print(
+    #     f"ROUGE-2 : {score['rouge2'].fmeasure:.4f}"
+    # )
 
-    print(
-        f"ROUGE-L : {score['rougeL'].fmeasure:.4f}"
-    )
+    # print(
+    #     f"ROUGE-L : {score['rougeL'].fmeasure:.4f}"
+    # )
 
 if scores_all:
 
@@ -80,7 +80,7 @@ if scores_all:
 
     avg_rl = sum(s["rougeL"].fmeasure for s in scores_all) / len(scores_all)
 
-    print("\n---KẾT QUẢ TRUNG BÌNH -----")
+    print("\n---AVERAGE RESULTS-----")
 
     print(f"ROUGE-1 : {avg_r1:.4f}")
 
