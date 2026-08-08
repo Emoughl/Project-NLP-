@@ -22,6 +22,12 @@ def generate_summary(sentences, scores, similarity_matrix, top_n=18):
 
     top_n = min(top_n, len(sentences))
 
+    adjusted_scores = {}
+    for idx, sc in scores.items():
+        word_count = len(sentences[idx].split())
+        length_factor = min(1.0, word_count / 6)
+        adjusted_scores[idx] = sc * length_factor
+
     ranked = sorted(
         scores.items(),
         key=lambda item: item[1],

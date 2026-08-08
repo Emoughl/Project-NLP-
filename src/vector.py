@@ -19,7 +19,7 @@ def build_tfidf(sentences):
     return tfidf, vectorizer
 
 
-def build_similarity_matrix(tfidf):
+def build_similarity_matrix(tfidf , edge_threshold=0.02):
     #Build similarity matrix between sentences using Cosine Similarity
     similarity = cosine_similarity(tfidf)
 
@@ -39,5 +39,7 @@ def build_similarity_matrix(tfidf):
             similarity[i][j] *= position_weight
             
     np.fill_diagonal(similarity, 0)
+
+    similarity[similarity < edge_threshold] = 0
 
     return similarity
