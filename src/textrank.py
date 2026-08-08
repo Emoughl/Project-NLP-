@@ -22,6 +22,7 @@ def generate_summary(sentences, scores, similarity_matrix, top_n=18):
 
     top_n = min(top_n, len(sentences))
 
+    #Feature 4: Penalize very short sentences
     adjusted_scores = {}
     for idx, sc in scores.items():
         word_count = len(sentences[idx].split())
@@ -29,7 +30,7 @@ def generate_summary(sentences, scores, similarity_matrix, top_n=18):
         adjusted_scores[idx] = sc * length_factor
 
     ranked = sorted(
-        scores.items(),
+        adjusted_scores.items(),
         key=lambda item: item[1],
         reverse=True
     )
@@ -54,5 +55,8 @@ def generate_summary(sentences, scores, similarity_matrix, top_n=18):
 
         if len(summary) == top_n:
             break
+
+    #Sort by original position so the summary reads in order
+    summary.sort(key=lambda item: item[0])
 
     return [sentence for _, sentence in summary]

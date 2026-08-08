@@ -1,6 +1,26 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import re
+
+
+#Feature 4: Sentence length
+def sentence_length_scores(sentences, ideal_length=20):
+    scores = []
+    for s in sentences:
+        word_count = len(s.split())
+        score = 1.0 - min(1.0, abs(word_count - ideal_length) / ideal_length)
+        scores.append(score)
+    return np.array(scores)
+
+
+#Feature 5: Contains numeric data
+def numeric_content_scores(sentences):
+    scores = []
+    for s in sentences:
+        has_number = bool(re.search(r"\d", s))
+        scores.append(1.0 if has_number else 0.0)
+    return np.array(scores)
 
 
 def build_tfidf(sentences):
@@ -19,13 +39,14 @@ def build_tfidf(sentences):
     return tfidf, vectorizer
 
 
-def build_similarity_matrix(tfidf , edge_threshold=0.02):
+def build_similarity_matrix(tfidf, edge_threshold=0.02, return_raw=False):
     #Build similarity matrix between sentences using Cosine Similarity
-    similarity = cosine_similarity(tfidf)
+    raw_similarity = cosine_similarity(tfidf)
 
     # Feature 8:
     # Improvement - Add position weights to the graph
     # Sentences at the beginning of the text are given higher priority
+    similarity = raw_similarity.copy()
     n = similarity.shape[0]
 
     for i in range(n):
@@ -41,5 +62,9 @@ def build_similarity_matrix(tfidf , edge_threshold=0.02):
     np.fill_diagonal(similarity, 0)
 
     similarity[similarity < edge_threshold] = 0
+
+    #raw_similarity: used later for duplicate check (no position weighting)
+    if return_raw:
+        return similarity, raw_similarity
 
     return similarity
