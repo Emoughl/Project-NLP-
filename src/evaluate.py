@@ -57,20 +57,20 @@ for summary_file in OUTPUT_DIR.glob("*_summary.txt"):
 
     scores_all.append(score)
 
-    # print("=" * 60)
-    # print(doc_name)
+    print("=" * 60)
+    print(doc_name)
 
-    # print(
-    #     f"ROUGE-1 : {score['rouge1'].fmeasure:.4f}"
-    # )
+    print(
+        f"ROUGE-1 : {score['rouge1'].fmeasure:.4f}"
+    )
 
-    # print(
-    #     f"ROUGE-2 : {score['rouge2'].fmeasure:.4f}"
-    # )
+    print(
+        f"ROUGE-2 : {score['rouge2'].fmeasure:.4f}"
+    )
 
-    # print(
-    #     f"ROUGE-L : {score['rougeL'].fmeasure:.4f}"
-    # )
+    print(
+        f"ROUGE-L : {score['rougeL'].fmeasure:.4f}"
+    )
 
 if scores_all:
 

@@ -12,7 +12,7 @@ files = get_all_files()
 
 for input_file in files:
 
-    #print(f"Đang xử lý: {input_file}")
+    print(f"Đang xử lý: {input_file}")
 
     #Step 1: Read data from the DUC_TEXT dataset
     text = read_text(input_file)
