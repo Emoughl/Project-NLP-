@@ -182,6 +182,42 @@
     height: 4px;
   }
 
+  .mode-panel {
+    display: none;
+    flex: 1;
+    min-width: 210px;
+  }
+
+  .mode-panel.active {
+    display: flex;
+  }
+
+  #topNInput {
+    width: 70px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  #topNInput:focus { outline: none; border-color: var(--accent); }
+
+  .mode-hint {
+    font-size: 11.5px;
+    color: var(--muted-2);
+  }
+
+  .mode-hint code {
+    background: var(--panel-3);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  #lengthModeTabs { margin-top: 16px; }
+
   button {
     font-family: inherit;
     cursor: pointer;
@@ -332,6 +368,20 @@
     border-radius: var(--radius-md);
     padding: 14px 10px;
     text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .rouge-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .rouge-card .detail-hint {
+    margin-top: 8px;
+    font-size: 10.5px;
+    color: var(--accent);
+    font-weight: 600;
   }
 
   .gauge {
@@ -504,6 +554,128 @@
     padding: 1px 6px;
     border-radius: 4px;
   }
+
+  /* ROUGE detail modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 8, 18, 0.65);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+
+  .modal-backdrop.open { display: flex; }
+
+  .modal-box {
+    background: linear-gradient(180deg, var(--panel) 0%, var(--bg-1) 130%);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-close:hover { color: var(--text); border-color: var(--accent); }
+
+  .modal-box h3 {
+    margin: 0 26px 4px 0;
+    font-size: 16.5px;
+    font-weight: 800;
+  }
+
+  .modal-sub {
+    color: var(--muted);
+    font-size: 12.5px;
+    margin-bottom: 14px;
+  }
+
+  .modal-formula {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 15px;
+    font-size: 12.5px;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+    line-height: 1.8;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .modal-calc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13.5px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .modal-calc-row:last-of-type { border-bottom: none; }
+
+  .modal-calc-row span { color: var(--muted); }
+  .modal-calc-row b { color: var(--text); font-weight: 700; }
+  .modal-calc-row b.accent { color: var(--accent-2); }
+
+  .modal-section-title {
+    margin: 18px 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip {
+    background: var(--panel-3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 11px;
+    font-size: 12px;
+  }
+
+  .chip-more {
+    font-size: 11.5px;
+    color: var(--muted-2);
+    margin-top: 8px;
+  }
+
+  .modal-note {
+    margin-top: 16px;
+    font-size: 11.5px;
+    color: var(--muted-2);
+    line-height: 1.6;
+  }
 </style>
 </head>
 <body>
@@ -517,13 +689,35 @@
 <main>
   <section class="panel">
     <div class="panel-title"><h2>Văn bản gốc</h2></div>
-    <textarea id="inputText" placeholder="Dán văn bản (tiếng Anh) cần tóm tắt vào đây..."></textarea>
+    <textarea id="inputText" placeholder="Dán văn bản (tiếng Anh) cần tóm tắt vào đây, hoặc chọn file bên dưới..."></textarea>
+
+    <div class="ref-file-row" style="margin-top:10px;">
+      <label class="file-btn">
+        Chọn file văn bản
+        <input type="file" id="inputFile" style="display:none;" />
+      </label>
+      <span id="inputFileName"></span>
+      <button class="clear-ref" id="clearInputBtn">Xoá</button>
+    </div>
+
+    <div class="tabs" id="lengthModeTabs">
+      <button class="tab-btn active" data-mode="ratio">Theo % số câu</button>
+      <button class="tab-btn" data-mode="fixed">Số câu cố định</button>
+    </div>
 
     <div class="controls">
-      <div class="slider-wrap">
-        <span>Độ dài tóm tắt</span>
-        <input type="range" id="ratioSlider" min="10" max="70" value="30" step="5" />
-        <span id="ratioLabel">30%</span>
+      <div class="mode-panel active" data-mode-panel="ratio">
+        <div class="slider-wrap">
+          <span>Độ dài tóm tắt</span>
+          <input type="range" id="ratioSlider" min="10" max="70" value="30" step="5" />
+          <span id="ratioLabel">30%</span>
+        </div>
+      </div>
+      <div class="mode-panel" data-mode-panel="fixed">
+        <div class="slider-wrap">
+          <span>Số câu tóm tắt</span>
+          <input type="number" id="topNInput" min="1" value="18" />
+        </div>
       </div>
       <button id="summarizeBtn">Tóm tắt</button>
     </div>
@@ -534,11 +728,11 @@
         <span class="chevron">›</span>
       </button>
       <div class="ref-body" id="refBody">
-        <textarea id="referenceText" placeholder="Dán tóm tắt tham chiếu (ví dụ nội dung file trong DUC_SUM) hoặc tải file .txt bên dưới..."></textarea>
+        <textarea id="referenceText" placeholder="Dán tóm tắt tham chiếu (ví dụ nội dung file trong DUC_SUM) hoặc chọn file bên dưới..."></textarea>
         <div class="ref-file-row">
           <label class="file-btn">
-            Chọn file .txt
-            <input type="file" id="refFile" accept=".txt" style="display:none;" />
+            Chọn file tham chiếu
+            <input type="file" id="refFile" style="display:none;" />
           </label>
           <span id="refFileName"></span>
           <button class="clear-ref" id="clearRefBtn">Xoá tham chiếu</button>
@@ -563,12 +757,24 @@
 
 <footer>Chạy local qua Flask API (<code>/api/summarize</code>) &middot; thuật toán TextRank trong <code>src/</code></footer>
 
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal-box">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
 <script>
 const API_URL = "/api/summarize";
 
 const inputText    = document.getElementById("inputText");
+const inputFile      = document.getElementById("inputFile");
+const inputFileName  = document.getElementById("inputFileName");
+const clearInputBtn  = document.getElementById("clearInputBtn");
 const ratioSlider  = document.getElementById("ratioSlider");
 const ratioLabel   = document.getElementById("ratioLabel");
+const topNInput    = document.getElementById("topNInput");
+const lengthModeTabs = document.getElementById("lengthModeTabs");
 const summarizeBtn = document.getElementById("summarizeBtn");
 const errorBox     = document.getElementById("errorBox");
 const resultArea   = document.getElementById("resultArea");
@@ -581,15 +787,54 @@ const refFile        = document.getElementById("refFile");
 const refFileName    = document.getElementById("refFileName");
 const clearRefBtn    = document.getElementById("clearRefBtn");
 
+const modalBackdrop = document.getElementById("modalBackdrop");
+const modalBody      = document.getElementById("modalBody");
+const modalClose      = document.getElementById("modalClose");
+
 let lastSummary = [];
+let lastRougeDetail = null;
+let lengthMode = "ratio";
 
 ratioSlider.addEventListener("input", () => {
   ratioLabel.textContent = ratioSlider.value + "%";
 });
 
+lengthModeTabs.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    lengthModeTabs.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    lengthMode = btn.dataset.mode;
+
+    document.querySelectorAll(".mode-panel").forEach(panel => {
+      panel.classList.toggle("active", panel.dataset.modePanel === lengthMode);
+    });
+  });
+});
+
 refToggle.addEventListener("click", () => {
   refToggle.classList.toggle("open");
   refBody.classList.toggle("open");
+});
+
+inputFile.addEventListener("change", async () => {
+  const file = inputFile.files[0];
+  if (!file) return;
+  const content = await file.text();
+  inputText.value = content;
+  inputFileName.textContent = file.name;
+  clearInputBtn.style.display = "inline-block";
+  clearError();
+});
+
+clearInputBtn.addEventListener("click", () => {
+  inputText.value = "";
+  inputFile.value = "";
+  inputFileName.textContent = "";
+  clearInputBtn.style.display = "none";
+});
+
+inputText.addEventListener("input", () => {
+  clearInputBtn.style.display = inputText.value.trim() ? "inline-block" : "none";
 });
 
 refFile.addEventListener("change", async () => {
@@ -639,10 +884,19 @@ async function summarize() {
     return;
   }
 
+  if (lengthMode === "fixed" && (!topNInput.value || Number(topNInput.value) < 1)) {
+    showError("Vui lòng nhập số câu tóm tắt hợp lệ (>= 1).");
+    return;
+  }
+
   summarizeBtn.disabled = true;
   summarizeBtn.innerHTML = '<span class="spinner"></span>Đang xử lý...';
   resultArea.innerHTML = '<div class="placeholder">Đang phân tích văn bản...</div>';
   copyBtn.style.display = "none";
+
+  const lengthPayload = lengthMode === "fixed"
+    ? { top_n: Number(topNInput.value) }
+    : { ratio: Number(ratioSlider.value) / 100 };
 
   try {
     const res = await fetch(API_URL, {
@@ -650,7 +904,7 @@ async function summarize() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         text,
-        ratio: Number(ratioSlider.value) / 100,
+        ...lengthPayload,
         reference: reference || undefined,
       }),
     });
@@ -678,10 +932,10 @@ function gaugeGradient(pct) {
   return `conic-gradient(var(--accent) 0deg ${deg}deg, var(--panel-3) ${deg}deg 360deg)`;
 }
 
-function rougeCard(label, metric) {
+function rougeCard(type, label, metric) {
   const pct = Math.round(metric.fmeasure * 100);
   return `
-    <div class="rouge-card">
+    <div class="rouge-card" data-type="${type}">
       <div class="gauge" style="background:${gaugeGradient(pct)}">
         <span>${pct}%</span>
       </div>
@@ -690,8 +944,88 @@ function rougeCard(label, metric) {
         <span>P ${Math.round(metric.precision * 100)}%</span>
         <span>R ${Math.round(metric.recall * 100)}%</span>
       </div>
+      <div class="detail-hint">Xem chi tiết ›</div>
     </div>`;
 }
+
+const ROUGE_META = {
+  rouge1: {
+    title: "ROUGE-1 — trùng khớp theo từng từ (unigram)",
+    unit: "từ",
+    formula:
+      "Precision = số từ trùng khớp / tổng số từ trong bản tóm tắt hệ thống\n" +
+      "Recall   = số từ trùng khớp / tổng số từ trong bản tham chiếu\n" +
+      "F1       = 2 × (Precision × Recall) / (Precision + Recall)",
+    sectionLabel: "Các từ trùng khớp (đã stem)",
+  },
+  rouge2: {
+    title: "ROUGE-2 — trùng khớp theo cụm 2 từ liên tiếp (bigram)",
+    unit: "cụm 2 từ",
+    formula:
+      "Precision = số cụm 2 từ trùng khớp / tổng số cụm 2 từ trong bản tóm tắt hệ thống\n" +
+      "Recall   = số cụm 2 từ trùng khớp / tổng số cụm 2 từ trong bản tham chiếu\n" +
+      "F1       = 2 × (Precision × Recall) / (Precision + Recall)",
+    sectionLabel: "Các cụm 2 từ trùng khớp (đã stem)",
+  },
+  rougeL: {
+    title: "ROUGE-L — dựa trên dãy con chung dài nhất (LCS)",
+    unit: "từ (theo LCS)",
+    formula:
+      "LCS = dãy từ dài nhất xuất hiện theo đúng thứ tự ở cả 2 bên (không cần liền kề)\n" +
+      "Precision = độ dài LCS / tổng số từ trong bản tóm tắt hệ thống\n" +
+      "Recall   = độ dài LCS / tổng số từ trong bản tham chiếu\n" +
+      "F1       = 2 × (Precision × Recall) / (Precision + Recall)",
+    sectionLabel: "Các từ khớp theo LCS (đã stem, theo đúng thứ tự)",
+  },
+};
+
+function openRougeModal(type) {
+  if (!lastRougeDetail || !lastRougeDetail[type]) return;
+  const d = lastRougeDetail[type];
+  const meta = ROUGE_META[type];
+  const unitTotalLabel = type === "rougeL" ? "Tổng số từ" : `Tổng số ${meta.unit}`;
+
+  const shown = d.matched_examples || [];
+  const moreCount = Math.max(0, (d.matched_total_unique || 0) - shown.length);
+
+  const chipsHtml = shown.length
+    ? `<div class="chip-list">${shown.map(w => `<span class="chip">${escapeHtml(w)}</span>`).join("")}</div>
+       ${moreCount > 0 ? `<div class="chip-more">+ ${moreCount} mục khác</div>` : ""}`
+    : `<div class="chip-more">Không có trùng khớp nào.</div>`;
+
+  modalBody.innerHTML = `
+    <h3>${meta.title}</h3>
+    <div class="modal-sub">Số liệu cụ thể tạo ra điểm ${Math.round(d.fmeasure * 100)}% bên dưới</div>
+
+    <div class="modal-formula">${escapeHtml(meta.formula).replaceAll("\n", "<br>")}</div>
+
+    <div class="modal-calc-row"><span>Số ${meta.unit} trùng khớp</span><b>${d.match_count}</b></div>
+    <div class="modal-calc-row"><span>${unitTotalLabel} — bản tóm tắt hệ thống</span><b>${d.candidate_count}</b></div>
+    <div class="modal-calc-row"><span>${unitTotalLabel} — bản tham chiếu</span><b>${d.reference_count}</b></div>
+    <div class="modal-calc-row"><span>Precision</span><b class="accent">${d.match_count} / ${d.candidate_count} = ${Math.round(d.precision * 100)}%</b></div>
+    <div class="modal-calc-row"><span>Recall</span><b class="accent">${d.match_count} / ${d.reference_count} = ${Math.round(d.recall * 100)}%</b></div>
+    <div class="modal-calc-row"><span>F1 (điểm hiển thị trên thẻ)</span><b class="accent">${Math.round(d.fmeasure * 100)}%</b></div>
+
+    <div class="modal-section-title">${meta.sectionLabel}</div>
+    ${chipsHtml}
+
+    <div class="modal-note">Lưu ý: điểm ROUGE dùng Porter Stemmer nên các từ hiển thị có thể là dạng rút gọn (ví dụ "injuries" → "injuri", "evacuated" → "evacu") — đây là cách rouge_score so khớp, không phải lỗi hiển thị.</div>
+  `;
+
+  modalBackdrop.classList.add("open");
+}
+
+function closeRougeModal() {
+  modalBackdrop.classList.remove("open");
+}
+
+modalClose.addEventListener("click", closeRougeModal);
+modalBackdrop.addEventListener("click", (e) => {
+  if (e.target === modalBackdrop) closeRougeModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeRougeModal();
+});
 
 function renderResult(data) {
   lastSummary = data.summary;
@@ -703,15 +1037,17 @@ function renderResult(data) {
       <div class="stat"><b>${Math.round(data.compression * 100)}%</b>Tỉ lệ nén</div>
     </div>`;
 
+  lastRougeDetail = data.rouge_detail || null;
+
   let rougeHtml = "";
   if (data.rouge) {
     rougeHtml = `
       <div class="rouge-block">
-        <h3>📊 Điểm ROUGE (so với tham chiếu)</h3>
+        <h3>📊 Điểm ROUGE (so với tham chiếu)${lastRougeDetail ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">— bấm vào thẻ để xem chi tiết</span>' : ""}</h3>
         <div class="rouge-grid">
-          ${rougeCard("ROUGE-1", data.rouge.rouge1)}
-          ${rougeCard("ROUGE-2", data.rouge.rouge2)}
-          ${rougeCard("ROUGE-L", data.rouge.rougeL)}
+          ${rougeCard("rouge1", "ROUGE-1", data.rouge.rouge1)}
+          ${rougeCard("rouge2", "ROUGE-2", data.rouge.rouge2)}
+          ${rougeCard("rougeL", "ROUGE-L", data.rouge.rougeL)}
         </div>
       </div>`;
   } else if (data.rouge_warning) {
@@ -751,11 +1087,18 @@ function renderResult(data) {
       resultArea.querySelector(`.tab-panel[data-panel="${btn.dataset.tab}"]`).classList.add("active");
     });
   });
+
+  if (lastRougeDetail) {
+    resultArea.querySelectorAll(".rouge-card").forEach(card => {
+      card.addEventListener("click", () => openRougeModal(card.dataset.type));
+    });
+  }
 }
 
 copyBtn.addEventListener("click", () => {
   if (!lastSummary.length) return;
-  navigator.clipboard.writeText(lastSummary.join(" "));
+  const formatted = lastSummary.map((s, i) => `${i + 1}. ${s}`).join("\n");
+  navigator.clipboard.writeText(formatted);
   copyBtn.textContent = "Đã copy!";
   setTimeout(() => (copyBtn.textContent = "Copy tóm tắt"), 1500);
 });

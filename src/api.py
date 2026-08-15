@@ -3,9 +3,8 @@ Flask API nhỏ bọc lại pipeline TextRank hiện có (preprocess/vector/text
 để phục vụ giao diện web (static/index.html).
 
 Chạy:
-    cd src
     python api.py
-Mặc định phục vụ tại http://127.0.0.1:5000
+    truy cập http://127.0.0.1:5000
 """
 
 import sys
@@ -33,12 +32,14 @@ from web_text import split_sentences_generic, clean_reference_text
 
 try:
     from rouge_score import rouge_scorer
+    from rouge_detail import rouge_breakdown
     _rouge_scorer = rouge_scorer.RougeScorer(
         ["rouge1", "rouge2", "rougeL"], use_stemmer=True
     )
     _HAS_ROUGE = True
 except ImportError:
     _rouge_scorer = None
+    rouge_breakdown = None
     _HAS_ROUGE = False
 
 app = Flask(__name__, static_folder="static", static_url_path="")
@@ -61,14 +62,31 @@ def _compute_rouge(reference_text, summary_sentences):
     system_summary = " ".join(summary_sentences)
     scores = _rouge_scorer.score(ref_clean, system_summary)
 
-    return {
+    result = {
         key: {
             "precision": round(val.precision, 4),
             "recall": round(val.recall, 4),
             "fmeasure": round(val.fmeasure, 4),
         }
         for key, val in scores.items()
-    }, None
+    }
+    return result, None
+
+
+def _compute_rouge_detail(reference_text, summary_sentences):
+    """Số liệu chi tiết (số n-gram/từ trùng khớp, danh sách ví dụ...) phục vụ
+    phần 'Xem chi tiết' trên giao diện."""
+    if not _HAS_ROUGE or rouge_breakdown is None:
+        return None
+
+    ref_clean = clean_reference_text(reference_text)
+    if not ref_clean:
+        return None
+
+    try:
+        return rouge_breakdown(ref_clean, summary_sentences)
+    except Exception:
+        return None
 
 
 @app.route("/")
@@ -139,9 +157,11 @@ def summarize():
         for i, s in enumerate(sentences)
     ]
 
-    rouge_result, rouge_warning = (None, None)
+    rouge_result, rouge_warning, rouge_detail = (None, None, None)
     if reference_text:
         rouge_result, rouge_warning = _compute_rouge(reference_text, summary_sentences)
+        if rouge_result:
+            rouge_detail = _compute_rouge_detail(reference_text, summary_sentences)
 
     return jsonify({
         "sentence_count": len(sentences),
@@ -151,6 +171,7 @@ def summarize():
         "sentences": detail,
         "rouge": rouge_result,
         "rouge_warning": rouge_warning,
+        "rouge_detail": rouge_detail,
     })
 
 
