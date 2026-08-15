@@ -121,6 +121,5 @@ Project/
 
 - Python
 - scikit-learn
-- NetworkX
-- NumPy
+- NumPy (custom PageRank implementation, no NetworkX)
 - ROUGE

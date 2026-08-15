@@ -1,14 +1,51 @@
-import networkx as nx
+import numpy as np
+
+
+def _pagerank(similarity_matrix, alpha=0.85, max_iter=500, tol=1.0e-6):
+
+    W = np.array(similarity_matrix, dtype=float)
+    n = W.shape[0]
+
+    if n == 0:
+        return {}
+
+    #Make sure there are no self-loops (a sentence linking to itself)
+    np.fill_diagonal(W, 0)
+
+    row_sums = W.sum(axis=1)
+
+    #Build the transition matrix: M[i][j] = probability of moving from i to j
+    M = np.zeros_like(W)
+    dangling = row_sums == 0
+
+    for i in range(n):
+        if dangling[i]:
+            #Dangling node (no outgoing edges): distribute uniformly
+            M[i] = 1.0 / n
+        else:
+            M[i] = W[i] / row_sums[i]
+
+    scores = np.full(n, 1.0 / n)
+    teleport = np.full(n, 1.0 / n)
+
+    for _ in range(max_iter):
+        new_scores = alpha * (scores @ M) + (1 - alpha) * teleport
+
+        #Convergence check (L1 norm), same stopping rule used by networkx
+        if np.abs(new_scores - scores).sum() < n * tol:
+            scores = new_scores
+            break
+
+        scores = new_scores
+
+    return {i: float(scores[i]) for i in range(n)}
+
 
 def rank_sentences(similarity_matrix):
-    #Feature 5: Represent text as a graph
-    graph = nx.from_numpy_array(similarity_matrix)
-
-    #Rank the importance of sentences using PageRank
-    scores = nx.pagerank(
-        graph,
+    #Feature 5: Represent text as a graph and rank sentences with PageRank
+    scores = _pagerank(
+        similarity_matrix,
         alpha=0.85,
-        weight="weight",
         max_iter=500
     )
 
