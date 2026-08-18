@@ -6,8 +6,15 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 def sentence_similarity(sentence1, sentence2):
     #Calculate the similarity between two sentences using TF-IDF and Cosine Similarity.
+    #stop_words="english": loai cac tu noi (the, a, of, was, said...) de
+    #tranh diem bi "bom" ao khi 2 van ban dai deu dung nhieu tu noi giong
+    #nhau du noi dung hoan toan khac nhau.
 
-    vectorizer = TfidfVectorizer()
+    vectorizer = TfidfVectorizer(
+            stop_words="english", # 1.Stop-word Removal (đặc trưng lọc từ dừng)
+            ngram_range=(1, 2), # 2. TF-IDF Unigram (đặc trưng từ đơn), 3.TF-IDF Bigram (đặc trưng cụm 2 từ)
+            min_df=1
+        )
 
     tfidf = vectorizer.fit_transform([sentence1, sentence2])
 

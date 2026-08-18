@@ -47,7 +47,14 @@ def accuracy_score(reference_text, system_text):
     if not reference_text.strip() or not system_text.strip():
         return 0.0
     try:
-        vectorizer = TfidfVectorizer()
+        # stop_words="english": loai tu noi (the, a, of, was, said...) de
+        # tranh diem bi "bom" ao khi 2 van ban dai deu dung chung nhieu tu
+        # noi du noi dung hoan toan khac nhau.
+        vectorizer = TfidfVectorizer(
+                stop_words="english", # 1.Stop-word Removal (đặc trưng lọc từ dừng)
+                ngram_range=(1, 2), # 2. TF-IDF Unigram (đặc trưng từ đơn), 3.TF-IDF Bigram (đặc trưng cụm 2 từ)
+                min_df=1
+            )
         tfidf = vectorizer.fit_transform([reference_text, system_text])
         return float(cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0])
     except ValueError:
