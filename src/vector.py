@@ -1,70 +1,52 @@
+import re
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
-import re
 
-
-#Feature 4: Sentence length
-def sentence_length_scores(sentences, ideal_length=20):
-    scores = []
-    for s in sentences:
-        word_count = len(s.split())
-        score = 1.0 - min(1.0, abs(word_count - ideal_length) / ideal_length)
-        scores.append(score)
-    return np.array(scores)
-
-
-#Feature 5: Contains numeric data
-def numeric_content_scores(sentences):
-    scores = []
-    for s in sentences:
-        has_number = bool(re.search(r"\d", s))
-        scores.append(1.0 if has_number else 0.0)
-    return np.array(scores)
-
-
-def build_tfidf(sentences):
-    #Feature 1: TF-IDF (Term Frequency–Inverse Document Frequency)
+def build_tfidf_matrix(sentences):
+    #Biến danh sách các câu thành ma trận TF-IDF
     vectorizer = TfidfVectorizer(
-        #Feature 2: Remove stop words
-        stop_words="english",
-        lowercase=True, #Convert all words to lowercase
-        #Feature 3: Use unigram and bigram
-        ngram_range=(1, 2), #Get 1 word or phrase
-        min_df=2, #If word appears in less than 2 sentences, it will be removed
-        max_df=0.9, #If word appears in more than 90% of sentences, it will be removed
-        norm="l2"# Normalize the vector to have unit norm
+        stop_words="english", # 1.Stop-word Removal (đặc trưng lọc từ dừng)
+        ngram_range=(1, 2), # 2. TF-IDF Unigram (đặc trưng từ đơn), 3.TF-IDF Bigram (đặc trưng cụm 2 từ)
+        min_df=1
     )
-    tfidf = vectorizer.fit_transform(sentences) #
-    return tfidf, vectorizer
+    
+    tfidf_matrix = vectorizer.fit_transform(sentences)
+    return tfidf_matrix, vectorizer
 
+def calculate_similarity_matrix(tfidf_matrix):
+    #Tính ma trận độ tương đồng Cosine giữa tất cả các cặp câu
+    sim_matrix = cosine_similarity(tfidf_matrix, tfidf_matrix)
+    
+    #Xóa đường chéo chính (độ tương đồng của 1 câu với chính nó = 1.0)
+    np.fill_diagonal(sim_matrix, 0)
+    
+    return sim_matrix
 
-def build_similarity_matrix(tfidf, edge_threshold=0.02, return_raw=False):
-    #Build similarity matrix between sentences using Cosine Similarity
-    raw_similarity = cosine_similarity(tfidf)
-
-    # Feature 8:
-    # Improvement - Add position weights to the graph
-    # Sentences at the beginning of the text are given higher priority
-    similarity = raw_similarity.copy()
-    n = similarity.shape[0]
-
-    for i in range(n):
-        for j in range(n):
-
-            position_weight = (
-                (1 - i / n) +
-                (1 - j / n)
-            ) / 2
-
-            similarity[i][j] *= position_weight
-            
-    np.fill_diagonal(similarity, 0)
-
-    similarity[similarity < edge_threshold] = 0
-
-    #raw_similarity: used later for duplicate check (no position weighting)
-    if return_raw:
-        return similarity, raw_similarity
-
-    return similarity
+def extract_additional_features(sentences):
+    num_sentences = len(sentences)
+    features = np.zeros((num_sentences, 4))
+    
+    # Tìm độ dài câu dài nhất để chuẩn hóa
+    max_len = max([len(s.split()) for s in sentences]) if sentences else 1
+    
+    for i, s in enumerate(sentences):
+        words = s.split()
+        sentence_len = len(words)
+        
+        # 4.Sentence Length (đặc trưng độ dài câu)
+        len_score = sentence_len / max_len
+        
+        # 5.Sentence Position (đặc trưng vị trí câu)
+        position_score = 1.0 - (i / num_sentences)
+        
+        # 6.Numeric Content (đặc trưng chứa con số/dữ liệu)
+        has_number = 1.0 if re.search(r"\d+", s) else 0.0
+        
+       # 7.Proper Nouns / Capitalization (Tên riêng, địa danh, chữ viết hoa)
+        capital_count = sum(1 for w in words if w.isupper() or w.istitle())
+        capital_ratio = capital_count / max_len if max_len > 0 else 0
+        
+        features[i] = [len_score, position_score, has_number, capital_ratio]
+        
+    return features

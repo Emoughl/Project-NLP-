@@ -22,71 +22,19 @@ except ImportError:
     _HAS_CORS = False
 
 from vector import (
-    build_tfidf,
-    build_similarity_matrix,
-    sentence_length_scores,
-    numeric_content_scores,
+    build_tfidf_matrix,
+    calculate_similarity_matrix,
+    extract_additional_features,
 )
-from textrank import rank_sentences, generate_summary
+from textrank import apply_feature_weights, calculate_pagerank_numpy
 from web_text import split_sentences_generic, clean_reference_text
-
-try:
-    from rouge_score import rouge_scorer
-    from rouge_detail import rouge_breakdown
-    _rouge_scorer = rouge_scorer.RougeScorer(
-        ["rouge1", "rouge2", "rougeL"], use_stemmer=True
-    )
-    _HAS_ROUGE = True
-except ImportError:
-    _rouge_scorer = None
-    rouge_breakdown = None
-    _HAS_ROUGE = False
+from similarity import sentence_similarity, keyword_overlap
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 if _HAS_CORS:
     CORS(app)
 
 MAX_CHARS = 50_000
-
-
-def _compute_rouge(reference_text, summary_sentences):
-    """Tính ROUGE-1 / ROUGE-2 / ROUGE-L giữa tóm tắt hệ thống và bản tham chiếu
-    do người dùng cung cấp — cùng cách tính với src/evaluate.py."""
-    if not _HAS_ROUGE:
-        return None, "Thiếu thư viện rouge_score (pip install rouge_score)."
-
-    ref_clean = clean_reference_text(reference_text)
-    if not ref_clean:
-        return None, None
-
-    system_summary = " ".join(summary_sentences)
-    scores = _rouge_scorer.score(ref_clean, system_summary)
-
-    result = {
-        key: {
-            "precision": round(val.precision, 4),
-            "recall": round(val.recall, 4),
-            "fmeasure": round(val.fmeasure, 4),
-        }
-        for key, val in scores.items()
-    }
-    return result, None
-
-
-def _compute_rouge_detail(reference_text, summary_sentences):
-    """Số liệu chi tiết (số n-gram/từ trùng khớp, danh sách ví dụ...) phục vụ
-    phần 'Xem chi tiết' trên giao diện."""
-    if not _HAS_ROUGE or rouge_breakdown is None:
-        return None
-
-    ref_clean = clean_reference_text(reference_text)
-    if not ref_clean:
-        return None
-
-    try:
-        return rouge_breakdown(ref_clean, summary_sentences)
-    except Exception:
-        return None
 
 
 @app.route("/")
@@ -121,47 +69,65 @@ def summarize():
     top_n = min(int(top_n), len(sentences))
 
     try:
-        tfidf_matrix, _ = build_tfidf(sentences)
-        similarity_matrix, raw_similarity_matrix = build_similarity_matrix(
-            tfidf_matrix, return_raw=True
-        )
-        scores = rank_sentences(similarity_matrix)
+        tfidf_matrix, _ = build_tfidf_matrix(sentences)
+        similarity_matrix = calculate_similarity_matrix(tfidf_matrix)
     except ValueError:
-        # Xảy ra khi TF-IDF (min_df=2) không tìm được từ nào lặp lại
-        # giữa các câu -> văn bản quá ngắn / các câu quá khác biệt nhau.
+        # Xảy ra khi TF-IDF không tìm được từ nào lặp lại giữa các câu
+        # -> văn bản quá ngắn / các câu quá khác biệt nhau.
         return jsonify({
             "error": "Không đủ từ lặp lại giữa các câu để tính TF-IDF. "
                      "Hãy thử dán một đoạn văn bản dài hơn."
         }), 400
 
-    len_scores = sentence_length_scores(sentences)
-    num_scores = numeric_content_scores(sentences)
+    # Trích đặc trưng bổ sung (độ dài câu, vị trí câu, số liệu, viết hoa)
+    # và gộp trọng số vào đồ thị trước khi xếp hạng — giống hệt main.py.
+    extra_features = extract_additional_features(sentences)
+    enhanced_matrix = apply_feature_weights(similarity_matrix, extra_features)
 
-    combined_scores = {
-        idx: (0.8 * sc + 0.1 * len_scores[idx] + 0.1 * num_scores[idx])
-        for idx, sc in scores.items()
-    }
+    scores = calculate_pagerank_numpy(enhanced_matrix)
 
-    summary_sentences = generate_summary(
-        sentences, combined_scores, raw_similarity_matrix, top_n=top_n
-    )
-    summary_order = {s: i for i, s in enumerate(summary_sentences)}
+    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    top_indices = sorted(idx for idx, _ in ranked[:top_n])
+
+    summary_sentences = [sentences[i] for i in top_indices]
+    summary_index_set = set(top_indices)
 
     detail = [
         {
             "index": i,
             "text": s,
-            "score": round(float(combined_scores[i]), 4),
-            "in_summary": s in summary_order,
+            "score": round(float(scores[i]), 4),
+            "in_summary": i in summary_index_set,
         }
         for i, s in enumerate(sentences)
     ]
 
-    rouge_result, rouge_warning, rouge_detail = (None, None, None)
+    # Độ chính xác (Tiêu chí 7) — Cosine TF-IDF giữa bản tóm tắt hệ thống và
+    # bản tóm tắt tham chiếu do người dùng dán vào, cùng cách tính với
+    # src/evaluate.py (không dùng ROUGE).
+    accuracy = None
+    accuracy_warning = None
+    accuracy_detail = None
     if reference_text:
-        rouge_result, rouge_warning = _compute_rouge(reference_text, summary_sentences)
-        if rouge_result:
-            rouge_detail = _compute_rouge_detail(reference_text, summary_sentences)
+        ref_clean = clean_reference_text(reference_text)
+        if ref_clean:
+            summary_text = " ".join(summary_sentences)
+            try:
+                accuracy = round(float(sentence_similarity(ref_clean, summary_text)), 4)
+                # Chi tiết để giải thích "vì sao" ra điểm đó — từ khoá xuất
+                # hiện ở cả 2 bên, dùng để minh hoạ cho phần tử/mẫu số của
+                # công thức Cosine Similarity = (A . B) / (|A| * |B|).
+                overlap = keyword_overlap(ref_clean, summary_text)
+                accuracy_detail = {
+                    "shared_words": overlap["shared_words"],
+                    "shared_total": overlap["shared_total"],
+                    "reference_word_count": overlap["reference_word_count"],
+                    "candidate_word_count": overlap["candidate_word_count"],
+                }
+            except ValueError:
+                accuracy_warning = "Không đủ từ chung giữa 2 văn bản để tính độ chính xác."
+        else:
+            accuracy_warning = "Bản tham chiếu trống sau khi làm sạch."
 
     return jsonify({
         "sentence_count": len(sentences),
@@ -169,9 +135,9 @@ def summarize():
         "compression": round(len(summary_sentences) / len(sentences), 3),
         "summary": summary_sentences,
         "sentences": detail,
-        "rouge": rouge_result,
-        "rouge_warning": rouge_warning,
-        "rouge_detail": rouge_detail,
+        "accuracy": accuracy,
+        "accuracy_warning": accuracy_warning,
+        "accuracy_detail": accuracy_detail,
     })
 
 
