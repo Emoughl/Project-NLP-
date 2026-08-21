@@ -102,9 +102,8 @@ def summarize():
         for i, s in enumerate(sentences)
     ]
 
-    # Độ chính xác (Tiêu chí 7) — Cosine TF-IDF giữa bản tóm tắt hệ thống và
-    # bản tóm tắt tham chiếu do người dùng dán vào, cùng cách tính với
-    # src/evaluate.py (không dùng ROUGE).
+    # Độ chính xác — Cosine TF-IDF giữa bản tóm tắt hệ thống và
+    # bản tham chiếu, cùng cách tính với evaluate.py.
     accuracy = None
     accuracy_warning = None
     accuracy_detail = None

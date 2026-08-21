@@ -10,16 +10,17 @@ src/
 ├── web_text.py     # Sentence splitting for free-form text
 │                   # (different from preprocess.py, which only reads
 │                   # the <s>...</s> format of DUC)
+├── similarity.py   # Sentence similarity & keyword overlap helpers
 └── static/
     └── index.html  # Web interface (pure HTML/CSS/JS, no build required)
 ```
 
 ## Installation
 
-Two additional libraries are required (not yet included in `library.txt`):
+The required libraries are listed in `library.txt`. Install them with:
 
 ```bash
-pip install flask flask-cors
+pip install -r library.txt
 ```
 
 If you are using the existing virtual environment in the project, activate it before installing:
@@ -54,14 +55,16 @@ Open your browser at:
 
 * `api.py` reuses the same scoring logic as `main.py`:
 
-  `0.8 * PageRank + 0.1 * sentence length + 0.1 * contains number`
+  ```
+  enhanced_sim = α × cosine_sim + (1 − α) × feature_matrix   (α = 0.7)
+  ```
 
-  This ensures that the results remain consistent with the existing batch processing pipeline.
+  Cosine Similarity is blended with 4 additional feature weights (sentence length, position, numeric content, capitalization) before running PageRank. This ensures that the results remain consistent with the existing batch processing pipeline.
 
-* Since `vector.build_tfidf` uses `min_df=2` (a word must appear in at least two sentences), very short texts or texts with highly different sentences may produce the error:
+* Since `vector.build_tfidf_matrix` uses `min_df=1`, very short texts where no word appears in more than one sentence may produce the error:
 
   **"Not enough repeated words..."**
 
-  This is a limitation of the original TF-IDF algorithm, not an issue with the web interface.
+  This is a limitation of the TF-IDF approach (Cosine Similarity between sentences with zero shared vocabulary is undefined), not an issue with the web interface.
 
 * `web_text.py` attempts to use `nltk.sent_tokenize` and automatically downloads the `punkt` data the first time if an internet connection is available. If the download fails, it automatically falls back to regex-based sentence splitting, so the application can still work offline.

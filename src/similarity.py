@@ -5,27 +5,19 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 def sentence_similarity(sentence1, sentence2):
-    #Calculate the similarity between two sentences using TF-IDF and Cosine Similarity.
-    #stop_words="english": loai cac tu noi (the, a, of, was, said...) de
-    #tranh diem bi "bom" ao khi 2 van ban dai deu dung nhieu tu noi giong
-    #nhau du noi dung hoan toan khac nhau.
-
+    #Tính Cosine Similarity giữa 2 câu/đoạn văn qua vector TF-IDF
+    #Cùng config TfidfVectorizer với vector.py (stop_words, ngram 1-2)
     vectorizer = TfidfVectorizer(
-            stop_words="english", # 1.Stop-word Removal (đặc trưng lọc từ dừng)
-            ngram_range=(1, 2), # 2. TF-IDF Unigram (đặc trưng từ đơn), 3.TF-IDF Bigram (đặc trưng cụm 2 từ)
-            min_df=1
-        )
-
+        stop_words="english",
+        ngram_range=(1, 2),
+        min_df=1
+    )
     tfidf = vectorizer.fit_transform([sentence1, sentence2])
-
-    similarity = cosine_similarity(tfidf[0:1], tfidf[1:2])
-
-    return similarity[0][0]
+    return cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
 
 
 _STOPWORDS_VI_EN = {
-    # Danh sách rất nhỏ, chỉ để lọc bớt từ nối/hư từ khi liệt kê từ khoá
-    # trùng nhau — không phải bộ stopword đầy đủ.
+    # Bộ lọc nhỏ cho từ nối/hư từ khi liệt kê từ khóa trùng nhau
     "the", "a", "an", "of", "to", "in", "on", "and", "or", "is", "are",
     "was", "were", "for", "with", "by", "at", "this", "that", "it", "its",
     "be", "as", "from", "has", "have", "had", "will", "would", "can",
@@ -41,10 +33,7 @@ def _keywords(text):
 
 
 def keyword_overlap(reference_text, candidate_text):
-    """Từ khoá xuất hiện ở CẢ bản tham chiếu và bản tóm tắt hệ thống —
-    dùng để minh hoạ trực quan "vì sao" 2 bản được coi là giống nhau khi
-    tính Cosine Similarity (thay cho phần liệt kê n-gram trùng khớp mà
-    ROUGE từng cung cấp)."""
+    """Liệt kê từ khóa xuất hiện ở cả bản tham chiếu và bản tóm tắt."""
     ref_set = set(_keywords(reference_text))
     cand_set = set(_keywords(candidate_text))
     shared = sorted(ref_set & cand_set)

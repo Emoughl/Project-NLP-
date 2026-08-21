@@ -48,21 +48,29 @@ The program follows six main steps:
 
 ---
 
-# 🔍 TextRank Features
+# 🔍 TextRank Features (7 features)
 
-The implementation includes the following features:
+The implementation uses a total of **7 features**:
 
-- TF-IDF vectorization
-- Stop-word removal
-- Unigram & Bigram representation
-- Sentence similarity using Cosine Similarity
-- Sentence position weighting
+1. **Stop-word Removal** — loại từ dừng tiếng Anh (`stop_words="english"`) → `vector.py`
+2. **TF-IDF Unigram** — trọng số từ đơn (`ngram_range=(1, 2)`) → `vector.py`
+3. **TF-IDF Bigram** — trọng số cụm 2 từ (`ngram_range=(1, 2)`) → `vector.py`
+4. **Sentence Length** — độ dài câu, chuẩn hóa theo câu dài nhất → `vector.py`
+5. **Sentence Position** — vị trí câu, câu đầu được ưu tiên → `vector.py`
+6. **Numeric Content** — câu có chứa số liệu hay không → `vector.py`
+7. **Proper Nouns / Capitalization** — tỷ lệ từ viết hoa / tên riêng → `vector.py`
 
 ---
 
 # 🏆 Sentence Ranking
 
-Sentence importance is calculated using the **TextRank (PageRank)** algorithm.
+Sentence importance is calculated using the **TextRank (PageRank)** algorithm with Power Iteration.
+
+The similarity matrix is enhanced by blending Cosine Similarity with additional feature weights:
+
+```
+enhanced_sim = α × cosine_sim + (1 − α) × feature_matrix   (α = 0.7)
+```
 
 Higher-ranked sentences are selected to produce the final extractive summary.
 
@@ -71,48 +79,48 @@ Higher-ranked sentences are selected to produce the final extractive summary.
 # 📄 Output
 
 ```
-summary.txt
+output/
+└── <docname>_summary.txt
 ```
 
-Contains the generated summary of the input document.
+Contains the generated summary of each input document.
 
 ---
 
 # 📈 Evaluation
 
-The generated summaries are evaluated using **ROUGE** metrics.
+The generated summaries are evaluated using **Cosine TF-IDF Similarity** — measuring the cosine of the angle between the TF-IDF vectors of the system summary and the reference summary (DUC_SUM).
 
-Evaluation includes:
-
-- ROUGE-1
-- ROUGE-2
-- ROUGE-L
-
-These metrics compare the generated summary with the reference summary provided in the DUC dataset.
+A score closer to **1.0** indicates higher lexical overlap with the reference.
 
 ---
 
 # 📂 Project Structure
 
 ```
-Project/
+Project(NLP)/
 │
 ├── data/
-│   ├── DUC_TEXT/
-│   └── DUC_SUM/
+│   ├── DUC_TEXT/       # Input documents (tagged <s>...</s>)
+│   └── DUC_SUM/        # Reference summaries
 │
-├── output/
-│   └── summary.txt
+├── output/             # Generated summaries
 │
 ├── src/
-│   ├── evaluate.py
-│   ├── main.py
-│   ├── preprocess.py
-│   ├── similarity.py
-│   ├── textrank.py
-│   └── vector.py
+│   ├── preprocess.py   # Read & split DUC_TEXT sentences
+│   ├── vector.py       # TF-IDF, Cosine Similarity, additional features
+│   ├── textrank.py     # Stochastic Matrix, PageRank, feature blending
+│   ├── main.py         # Pipeline orchestrator
+│   ├── evaluate.py     # Evaluation (Cosine TF-IDF) + commentary
+│   ├── similarity.py   # Sentence similarity helpers (web UI)
+│   ├── api.py          # Flask API for web interface
+│   ├── web_text.py     # Sentence splitter for free-form text
+│   └── static/
+│       └── index.html  # Web interface
 │
-└── README.md
+├── library.txt         # Python dependencies
+├── README.md
+└── WEB_UI_README.md
 ```
 
 ---
@@ -120,6 +128,7 @@ Project/
 # 🚀 Technologies
 
 - Python
-- scikit-learn
+- scikit-learn (TF-IDF, Cosine Similarity)
 - NumPy (custom PageRank implementation, no NetworkX)
-- ROUGE
+- Flask (web interface)
+- NLTK (sentence tokenization for web input)

@@ -70,7 +70,7 @@ def _regex_split(text):
 
 def clean_reference_text(text):
     """
-    Chuẩn hoá văn bản tóm tắt tham chiếu (dùng để tính ROUGE):
+    Chuẩn hoá văn bản tóm tắt tham chiếu (dùng để tính Cosine TF-IDF):
     nếu là file dạng DUC_SUM (có thẻ <s>...</s>) thì bóc câu ra và nối lại,
     ngược lại chỉ chuẩn hoá khoảng trắng.
     """
