@@ -368,11 +368,14 @@
     border-radius: var(--radius-md);
     padding: 14px 10px;
     text-align: center;
-    cursor: pointer;
     transition: border-color 0.15s ease, transform 0.15s ease;
   }
 
-  .rouge-card:hover {
+  .rouge-card[data-accuracy-card] {
+    cursor: pointer;
+  }
+
+  .rouge-card[data-accuracy-card]:hover {
     border-color: var(--accent);
     transform: translateY(-2px);
   }
@@ -724,7 +727,7 @@
 
     <div class="ref-section">
       <button class="ref-toggle" id="refToggle">
-        <span>📎 Thêm tóm tắt tham chiếu để tính điểm ROUGE <span class="hint">(tuỳ chọn)</span></span>
+        <span>📎 Thêm tóm tắt tham chiếu để tính độ chính xác <span class="hint">(tuỳ chọn)</span></span>
         <span class="chevron">›</span>
       </button>
       <div class="ref-body" id="refBody">
@@ -792,7 +795,6 @@ const modalBody      = document.getElementById("modalBody");
 const modalClose      = document.getElementById("modalClose");
 
 let lastSummary = [];
-let lastRougeDetail = null;
 let lengthMode = "ratio";
 
 ratioSlider.addEventListener("input", () => {
@@ -932,99 +934,65 @@ function gaugeGradient(pct) {
   return `conic-gradient(var(--accent) 0deg ${deg}deg, var(--panel-3) ${deg}deg 360deg)`;
 }
 
-function rougeCard(type, label, metric) {
-  const pct = Math.round(metric.fmeasure * 100);
+function accuracyCard(pct, hasDetail) {
   return `
-    <div class="rouge-card" data-type="${type}">
+    <div class="rouge-card"${hasDetail ? ' data-accuracy-card="1"' : ""}>
       <div class="gauge" style="background:${gaugeGradient(pct)}">
         <span>${pct}%</span>
       </div>
-      <div class="label">${label}</div>
+      <div class="label">Độ chính xác</div>
       <div class="sub">
-        <span>P ${Math.round(metric.precision * 100)}%</span>
-        <span>R ${Math.round(metric.recall * 100)}%</span>
+        <span>Cosine TF-IDF so với tham chiếu</span>
       </div>
-      <div class="detail-hint">Xem chi tiết ›</div>
+      ${hasDetail ? '<div class="detail-hint">Xem chi tiết ›</div>' : ""}
     </div>`;
 }
 
-const ROUGE_META = {
-  rouge1: {
-    title: "ROUGE-1 — trùng khớp theo từng từ (unigram)",
-    unit: "từ",
-    formula:
-      "Precision = số từ trùng khớp / tổng số từ trong bản tóm tắt hệ thống\n" +
-      "Recall   = số từ trùng khớp / tổng số từ trong bản tham chiếu\n" +
-      "F1       = 2 × (Precision × Recall) / (Precision + Recall)",
-    sectionLabel: "Các từ trùng khớp (đã stem)",
-  },
-  rouge2: {
-    title: "ROUGE-2 — trùng khớp theo cụm 2 từ liên tiếp (bigram)",
-    unit: "cụm 2 từ",
-    formula:
-      "Precision = số cụm 2 từ trùng khớp / tổng số cụm 2 từ trong bản tóm tắt hệ thống\n" +
-      "Recall   = số cụm 2 từ trùng khớp / tổng số cụm 2 từ trong bản tham chiếu\n" +
-      "F1       = 2 × (Precision × Recall) / (Precision + Recall)",
-    sectionLabel: "Các cụm 2 từ trùng khớp (đã stem)",
-  },
-  rougeL: {
-    title: "ROUGE-L — dựa trên dãy con chung dài nhất (LCS)",
-    unit: "từ (theo LCS)",
-    formula:
-      "LCS = dãy từ dài nhất xuất hiện theo đúng thứ tự ở cả 2 bên (không cần liền kề)\n" +
-      "Precision = độ dài LCS / tổng số từ trong bản tóm tắt hệ thống\n" +
-      "Recall   = độ dài LCS / tổng số từ trong bản tham chiếu\n" +
-      "F1       = 2 × (Precision × Recall) / (Precision + Recall)",
-    sectionLabel: "Các từ khớp theo LCS (đã stem, theo đúng thứ tự)",
-  },
-};
+let lastAccuracyScore = null;
+let lastAccuracyDetail = null;
 
-function openRougeModal(type) {
-  if (!lastRougeDetail || !lastRougeDetail[type]) return;
-  const d = lastRougeDetail[type];
-  const meta = ROUGE_META[type];
-  const unitTotalLabel = type === "rougeL" ? "Tổng số từ" : `Tổng số ${meta.unit}`;
+function openAccuracyModal() {
+  if (lastAccuracyScore === null) return;
+  const d = lastAccuracyDetail;
+  const pct = Math.round(lastAccuracyScore * 100);
 
-  const shown = d.matched_examples || [];
-  const moreCount = Math.max(0, (d.matched_total_unique || 0) - shown.length);
-
+  const shown = d ? d.shared_words || [] : [];
   const chipsHtml = shown.length
-    ? `<div class="chip-list">${shown.map(w => `<span class="chip">${escapeHtml(w)}</span>`).join("")}</div>
-       ${moreCount > 0 ? `<div class="chip-more">+ ${moreCount} mục khác</div>` : ""}`
-    : `<div class="chip-more">Không có trùng khớp nào.</div>`;
+    ? `<div class="chip-list">${shown.map(w => `<span class="chip">${escapeHtml(w)}</span>`).join("")}</div>`
+    : `<div class="chip-more">Không có từ khoá trùng nào.</div>`;
 
   modalBody.innerHTML = `
-    <h3>${meta.title}</h3>
-    <div class="modal-sub">Số liệu cụ thể tạo ra điểm ${Math.round(d.fmeasure * 100)}% bên dưới</div>
+    <h3>Độ chính xác — Cosine Similarity (TF-IDF)</h3>
+    <div class="modal-sub">Số liệu cụ thể tạo ra điểm ${pct}% bên dưới</div>
 
-    <div class="modal-formula">${escapeHtml(meta.formula).replaceAll("\n", "<br>")}</div>
+    <div class="modal-formula">Similarity = (A . B) / (|A| × |B|)<br>trong đó A, B là vector TF-IDF của bản tóm tắt hệ thống và bản tham chiếu</div>
 
-    <div class="modal-calc-row"><span>Số ${meta.unit} trùng khớp</span><b>${d.match_count}</b></div>
-    <div class="modal-calc-row"><span>${unitTotalLabel} — bản tóm tắt hệ thống</span><b>${d.candidate_count}</b></div>
-    <div class="modal-calc-row"><span>${unitTotalLabel} — bản tham chiếu</span><b>${d.reference_count}</b></div>
-    <div class="modal-calc-row"><span>Precision</span><b class="accent">${d.match_count} / ${d.candidate_count} = ${Math.round(d.precision * 100)}%</b></div>
-    <div class="modal-calc-row"><span>Recall</span><b class="accent">${d.match_count} / ${d.reference_count} = ${Math.round(d.recall * 100)}%</b></div>
-    <div class="modal-calc-row"><span>F1 (điểm hiển thị trên thẻ)</span><b class="accent">${Math.round(d.fmeasure * 100)}%</b></div>
+    ${d ? `
+    <div class="modal-calc-row"><span>Số từ khoá trong bản tóm tắt hệ thống</span><b>${d.candidate_word_count}</b></div>
+    <div class="modal-calc-row"><span>Số từ khoá trong bản tham chiếu</span><b>${d.reference_word_count}</b></div>
+    <div class="modal-calc-row"><span>Số từ khoá trùng ở cả 2 bên</span><b>${d.shared_total}</b></div>
+    ` : ""}
+    <div class="modal-calc-row"><span>Cosine Similarity (điểm hiển thị trên thẻ)</span><b class="accent">${pct}%</b></div>
 
-    <div class="modal-section-title">${meta.sectionLabel}</div>
+    <div class="modal-section-title">Từ khoá xuất hiện ở cả bản tóm tắt và bản tham chiếu</div>
     ${chipsHtml}
 
-    <div class="modal-note">Lưu ý: điểm ROUGE dùng Porter Stemmer nên các từ hiển thị có thể là dạng rút gọn (ví dụ "injuries" → "injuri", "evacuated" → "evacu") — đây là cách rouge_score so khớp, không phải lỗi hiển thị.</div>
+    <div class="modal-note">Lưu ý: Đây chỉ xét độ tương đồng dựa trên từ vựng nên nếu hai câu diễn đạt có ý giống nhau nhưng dùng từ khác nhau sẽ không được xem là trùng nhau</div>
   `;
 
   modalBackdrop.classList.add("open");
 }
 
-function closeRougeModal() {
+function closeAccuracyModal() {
   modalBackdrop.classList.remove("open");
 }
 
-modalClose.addEventListener("click", closeRougeModal);
+modalClose.addEventListener("click", closeAccuracyModal);
 modalBackdrop.addEventListener("click", (e) => {
-  if (e.target === modalBackdrop) closeRougeModal();
+  if (e.target === modalBackdrop) closeAccuracyModal();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeRougeModal();
+  if (e.key === "Escape") closeAccuracyModal();
 });
 
 function renderResult(data) {
@@ -1037,21 +1005,21 @@ function renderResult(data) {
       <div class="stat"><b>${Math.round(data.compression * 100)}%</b>Tỉ lệ nén</div>
     </div>`;
 
-  lastRougeDetail = data.rouge_detail || null;
+  lastAccuracyScore = typeof data.accuracy === "number" ? data.accuracy : null;
+  lastAccuracyDetail = data.accuracy_detail || null;
 
-  let rougeHtml = "";
-  if (data.rouge) {
-    rougeHtml = `
+  let accuracyHtml = "";
+  if (typeof data.accuracy === "number") {
+    const pct = Math.round(data.accuracy * 100);
+    accuracyHtml = `
       <div class="rouge-block">
-        <h3>📊 Điểm ROUGE (so với tham chiếu)${lastRougeDetail ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">— bấm vào thẻ để xem chi tiết</span>' : ""}</h3>
+        <h3>📊 Độ chính xác (so với tham chiếu)${lastAccuracyDetail ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">— bấm vào thẻ để xem chi tiết</span>' : ""}</h3>
         <div class="rouge-grid">
-          ${rougeCard("rouge1", "ROUGE-1", data.rouge.rouge1)}
-          ${rougeCard("rouge2", "ROUGE-2", data.rouge.rouge2)}
-          ${rougeCard("rougeL", "ROUGE-L", data.rouge.rougeL)}
+          ${accuracyCard(pct, !!lastAccuracyDetail)}
         </div>
       </div>`;
-  } else if (data.rouge_warning) {
-    rougeHtml = `<div class="rouge-warning">⚠️ ${escapeHtml(data.rouge_warning)}</div>`;
+  } else if (data.accuracy_warning) {
+    accuracyHtml = `<div class="rouge-warning">⚠️ ${escapeHtml(data.accuracy_warning)}</div>`;
   }
 
   const summaryHtml = `
@@ -1076,7 +1044,7 @@ function renderResult(data) {
     <div class="tab-panel active" data-panel="summary">${summaryHtml}</div>
     <div class="tab-panel" data-panel="full">${fullTextHtml}</div>`;
 
-  resultArea.innerHTML = statsHtml + rougeHtml + tabsHtml;
+  resultArea.innerHTML = statsHtml + accuracyHtml + tabsHtml;
   copyBtn.style.display = "inline-block";
 
   resultArea.querySelectorAll(".tab-btn").forEach(btn => {
@@ -1088,9 +1056,9 @@ function renderResult(data) {
     });
   });
 
-  if (lastRougeDetail) {
-    resultArea.querySelectorAll(".rouge-card").forEach(card => {
-      card.addEventListener("click", () => openRougeModal(card.dataset.type));
+  if (lastAccuracyDetail) {
+    resultArea.querySelectorAll("[data-accuracy-card]").forEach(card => {
+      card.addEventListener("click", openAccuracyModal);
     });
   }
 }

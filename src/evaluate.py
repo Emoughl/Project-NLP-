@@ -1,89 +1,119 @@
+# Đánh giá kết quả tóm tắt TextRank (Top node T = 18)
+# Metrics: Accuracy, Precision, Recall, F1
+
 from pathlib import Path
 import re
-from rouge_score import rouge_scorer
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 OUTPUT_DIR = BASE_DIR / "output"
+REFERENCE_DIR = BASE_DIR / "data" / "DUC_SUM"
+TRAIN_DIR = BASE_DIR / "data" / "DUC_TEXT" / "train"
+TEST_DIR = BASE_DIR / "data" / "DUC_TEXT" / "test"
 
-REFERENCE_DIR = (
-    BASE_DIR
-    / "data"
-    / "DUC_SUM"
-)
 
 def read_file(path):
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         return f.read()
 
 
-def clean_reference(text):
-    sentences = re.findall(
-        r"<s[^>]*>(.*?)</s>",
-        text,
-        flags=re.DOTALL
-    )
-
-    return " ".join(sentences)
+def split_sentences(text):
+    """Tách câu từ thẻ <s>...</s>."""
+    sentences = re.findall(r"<s[^>]*>(.*?)</s>", text, flags=re.DOTALL)
+    return [re.sub(r"\s+", " ", s).strip() for s in sentences if s.strip()]
 
 
-scorer = rouge_scorer.RougeScorer(
-    ["rouge1", "rouge2", "rougeL"],
-    use_stemmer=True
-)
+def find_source_file(doc_name):
+    """Tìm file nguồn trong train/ hoặc test/."""
+    for d in [TRAIN_DIR, TEST_DIR]:
+        p = d / doc_name
+        if p.exists():
+            return p
+    return None
 
-scores_all = []
 
-for summary_file in OUTPUT_DIR.glob("*_summary.txt"):
+def count_matched(system_sents, reference_sents, threshold=0.3):
+    """Đếm số câu trích được (đúng) bằng cosine similarity."""
+    if not system_sents or not reference_sents:
+        return 0
 
-    doc_name = summary_file.stem.replace("_summary", "")
+    all_sents = system_sents + reference_sents
+    try:
+        vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1)
+        tfidf = vectorizer.fit_transform(all_sents)
+    except ValueError:
+        return 0
 
-    reference_file = REFERENCE_DIR / f"{doc_name}"
+    n_sys = len(system_sents)
+    sim = cosine_similarity(tfidf[:n_sys], tfidf[n_sys:])
 
-    if not reference_file.exists():
-        print(f": {reference_file.name}")
-        continue
+    matched = 0
+    used = set()
+    for i in range(n_sys):
+        best_j, best_score = -1, -1
+        for j in range(len(reference_sents)):
+            if j not in used and sim[i][j] > best_score:
+                best_score = sim[i][j]
+                best_j = j
+        if best_j >= 0 and best_score >= threshold:
+            matched += 1
+            used.add(best_j)
 
-    system_summary = read_file(summary_file)
+    return matched
 
-    reference_summary = clean_reference(
-        read_file(reference_file)
-    )
 
-    score = scorer.score(
-        reference_summary,
-        system_summary
-    )
+def main():
+    all_acc, all_prec, all_rec, all_f1 = [], [], [], []
 
-    scores_all.append(score)
+    for summary_file in sorted(OUTPUT_DIR.glob("*_summary.txt")):
+        doc_name = summary_file.stem.replace("_summary", "")
 
-    print("=" * 60)
-    print(doc_name)
+        reference_file = REFERENCE_DIR / doc_name
+        if not reference_file.exists() or reference_file.stat().st_size == 0:
+            continue
 
-    print(
-        f"ROUGE-1 : {score['rouge1'].fmeasure:.4f}"
-    )
+        source_file = find_source_file(doc_name)
+        if source_file is None:
+            continue
 
-    print(
-        f"ROUGE-2 : {score['rouge2'].fmeasure:.4f}"
-    )
+        source_sents = split_sentences(read_file(source_file))
+        ref_sents = split_sentences(read_file(reference_file))
+        sys_text = read_file(summary_file).strip()
+        sys_sents = [s.strip() for s in sys_text.split("\n") if s.strip()]
 
-    print(
-        f"ROUGE-L : {score['rougeL'].fmeasure:.4f}"
-    )
+        if not source_sents or not ref_sents or not sys_sents:
+            continue
 
-if scores_all:
+        correct = count_matched(sys_sents, ref_sents)
 
-    avg_r1 = sum(s["rouge1"].fmeasure for s in scores_all) / len(scores_all)
+        # Acc  = #câu trích được (đúng) / #câu được gán nhãn (tổng câu nguồn)
+        acc = correct / len(source_sents) if source_sents else 0
 
-    avg_r2 = sum(s["rouge2"].fmeasure for s in scores_all) / len(scores_all)
+        # Precision = #câu trích được (đúng) / #câu trích được
+        prec = correct / len(sys_sents) if sys_sents else 0
 
-    avg_rl = sum(s["rougeL"].fmeasure for s in scores_all) / len(scores_all)
+        # Recall = #câu trích được (đúng) / #câu gán nhãn (câu tóm tắt)
+        rec = correct / len(ref_sents) if ref_sents else 0
 
-    print("\n---AVERAGE RESULTS-----")
+        # F1 = 2 * (P * R) / (P + R)
+        f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0
 
-    print(f"ROUGE-1 : {avg_r1:.4f}")
+        all_acc.append(acc)
+        all_prec.append(prec)
+        all_rec.append(rec)
+        all_f1.append(f1)
 
-    print(f"ROUGE-2 : {avg_r2:.4f}")
+        print(f"  {doc_name:12s}  P={prec:.3f}  R={rec:.3f}  F1={f1:.1%}  (Giữa 2 file output có {correct} đúng / tổng {len(sys_sents)})")
 
-    print(f"ROUGE-L : {avg_rl:.4f}")
+    if all_acc:
+        print(f"\n  TRUNG BÌNH ({len(all_acc)} văn bản, Top T = 18):")
+        print(f"    Accuracy  = {np.mean(all_acc):.4f}  ({np.mean(all_acc)*100:.1f}%)")
+        print(f"    Precision = {np.mean(all_prec):.4f}  ({np.mean(all_prec)*100:.1f}%)")
+        print(f"    Recall    = {np.mean(all_rec):.4f}  ({np.mean(all_rec)*100:.1f}%)")
+        print(f"    F1        = {np.mean(all_f1):.4f}  ({np.mean(all_f1)*100:.1f}%)")
+
+
+if __name__ == "__main__":
+    main()

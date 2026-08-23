@@ -1,7 +1,7 @@
-from preprocess import read_text, split_sentences, get_all_files
-from vector import build_tfidf, build_similarity_matrix, sentence_length_scores, numeric_content_scores
-from textrank import rank_sentences, generate_summary
 from pathlib import Path
+from preprocess import get_all_files, read_text, split_sentences
+from textrank import calculate_pagerank_numpy, generate_summary
+from vector import build_tfidf_matrix, calculate_similarity_matrix
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -10,55 +10,37 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 files = get_all_files()
 
+print("TÓM TẮT VĂN BẢN TỰ ĐỘNG BẰNG THUẬT TOÁN TEXTRANK")
+
 for input_file in files:
+    print(f"\nĐang xử lý: {input_file}")
 
-    print(f"Đang xử lý: {input_file}")
-
-    #Step 1: Read data from the DUC_TEXT dataset
+    # Đọc dữ liệu & tách câu
     text = read_text(input_file)
-
-    #Step 2: Text Preprocessing and Sentence Segmentation
     sentences = split_sentences(text)
 
     if len(sentences) == 0:
         continue
 
-    #Step 3: Represent sentences using TF-IDF
-    tfidf_matrix, vectorizer = build_tfidf(sentences)
-
-    #Step 4: Calculate similarity between sentences
-    similarity_matrix, raw_similarity_matrix = build_similarity_matrix(
-        tfidf_matrix, return_raw=True
-    )
-
-    #Step 5: Rank sentences using TextRank algorithm
-    scores = rank_sentences(similarity_matrix)
-
-    #Step 5b: Combine PageRank score with Feature 4 and Feature 5
-    len_scores = sentence_length_scores(sentences)
-    num_scores = numeric_content_scores(sentences)
-
-    combined_scores = {
-        idx: (
-            0.8 * sc
-            + 0.1 * len_scores[idx]
-            + 0.1 * num_scores[idx]
+    # Biểu diễn TF-IDF & tính ma trận tương đồng Cosine
+    try:
+        tfidf_matrix, vectorizer = build_tfidf_matrix(sentences)
+        similarity_matrix = calculate_similarity_matrix(tfidf_matrix)
+    except ValueError:
+        print(
+            f"  Bỏ qua {input_file}"
         )
-        for idx, sc in scores.items()
-    }
+        continue
 
-    #Step 6: Generate summary
-    summary = generate_summary(
-        sentences,
-        combined_scores,
-        raw_similarity_matrix,
-        top_n=18
-    )
+    # Xếp hạng câu bằng PageRank & trích xuất tóm tắt
+    scores = calculate_pagerank_numpy(similarity_matrix)
+    summary = generate_summary(sentences, scores, top_n=18)
 
+    # Ghi kết quả
     output_file = OUTPUT_DIR / f"{Path(input_file).stem}_summary.txt"
-
     with open(output_file, "w", encoding="utf-8") as f:
-        for sentence in summary:
-            f.write(sentence + "\n")
+        f.write(summary)
+
+    print(f"Đã lưu bản tóm tắt tại: {output_file.name}")
 
 print("\nFinished!")

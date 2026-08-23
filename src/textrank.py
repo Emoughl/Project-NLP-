@@ -1,99 +1,81 @@
 import numpy as np
 
 
-def _pagerank(similarity_matrix, alpha=0.85, max_iter=500, tol=1.0e-6):
+def build_stochastic_matrix(sim_matrix):
+    #Chuẩn hóa ma trận tương đồng thành ma trận chuyển trạng thái (Stochastic Matrix).
+    #Mỗi hàng chuẩn hóa tổng bằng 1. Câu cô lập (dangling node) được phân phối đều 1/n để tránh thất thoát tổng điểm PageRank.
 
-    W = np.array(similarity_matrix, dtype=float)
-    n = W.shape[0]
+    n = sim_matrix.shape[0]
+    row_sums = sim_matrix.sum(axis=1)
+    dangling = row_sums == 0
 
+    stochastic_matrix = np.zeros_like(sim_matrix, dtype=float)
+
+    # Câu có cạnh: chuẩn hóa tổng hàng = 1
+    if np.any(~dangling):
+        stochastic_matrix[~dangling] = (
+            sim_matrix[~dangling] / row_sums[~dangling][:, np.newaxis]
+        )
+
+    # Câu cô lập: phân phối đều
+    if np.any(dangling):
+        stochastic_matrix[dangling] = 1.0 / n
+
+    return stochastic_matrix.T
+
+
+def calculate_pagerank_numpy(
+    sim_matrix, damping_factor=0.85, max_iter=100, tol=1e-6
+):
+    #Tính điểm PageRank bằng Power Iteration
+    n = sim_matrix.shape[0]
     if n == 0:
         return {}
 
-    #Make sure there are no self-loops (a sentence linking to itself)
-    np.fill_diagonal(W, 0)
-
-    row_sums = W.sum(axis=1)
-
-    #Build the transition matrix: M[i][j] = probability of moving from i to j
-    M = np.zeros_like(W)
-    dangling = row_sums == 0
-
-    for i in range(n):
-        if dangling[i]:
-            #Dangling node (no outgoing edges): distribute uniformly
-            M[i] = 1.0 / n
-        else:
-            M[i] = W[i] / row_sums[i]
-
+    M = build_stochastic_matrix(sim_matrix)
     scores = np.full(n, 1.0 / n)
-    teleport = np.full(n, 1.0 / n)
+    damping_vector = np.full(n, (1.0 - damping_factor) / n)
 
+    # Power Iteration: R_new = d * M * R_old + (1-d)/N
     for _ in range(max_iter):
-        new_scores = alpha * (scores @ M) + (1 - alpha) * teleport
+        prev_scores = scores.copy()
+        scores = damping_factor * np.dot(M, prev_scores) + damping_vector
 
-        #Convergence check (L1 norm), same stopping rule used by networkx
-        if np.abs(new_scores - scores).sum() < n * tol:
-            scores = new_scores
+        if np.linalg.norm(scores - prev_scores, ord=1) < tol:
             break
 
-        scores = new_scores
-
-    return {i: float(scores[i]) for i in range(n)}
+    return {i: score for i, score in enumerate(scores)}
 
 
-def rank_sentences(similarity_matrix):
-    #Feature 5: Represent text as a graph and rank sentences with PageRank
-    scores = _pagerank(
-        similarity_matrix,
-        alpha=0.85,
-        max_iter=500
-    )
-
-    return scores
-
-#Choose the top sentences to create a summary
-def generate_summary(sentences, scores, similarity_matrix, top_n=18):
-
-    if not sentences:
-        return []
+def generate_summary(sentences, scores, top_n=3):
+    #Chọn top_n câu điểm PageRank cao nhất, sắp xếp theo thứ tự gốc
+    if not sentences or not scores:
+        return ""
 
     top_n = min(top_n, len(sentences))
 
-    #Feature 4: Penalize very short sentences
-    adjusted_scores = {}
-    for idx, sc in scores.items():
-        word_count = len(sentences[idx].split())
-        length_factor = min(1.0, word_count / 6)
-        adjusted_scores[idx] = sc * length_factor
-
-    ranked = sorted(
-        adjusted_scores.items(),
-        key=lambda item: item[1],
-        reverse=True
+    ranked_sentences = sorted(
+        scores.items(), key=lambda x: x[1], reverse=True
     )
+    top_indices = sorted(idx for idx, _ in ranked_sentences[:top_n])
 
-    summary = []
+    return "\n".join(sentences[i] for i in top_indices)
 
-    for index , _ in ranked:
 
-        sentence = sentences[index].strip()
+# --- KIỂM TRA TRỰC TIẾP ---
+if __name__ == "__main__":
+    from preprocess import get_all_files, read_text, split_sentences
+    from vector import build_tfidf_matrix, calculate_similarity_matrix
 
-        duplicate = False
-        for selected_index, _ in summary:
-            sim = similarity_matrix[index][selected_index]
-            if sim > 0.9:
-                duplicate = True
-                break
+    files = get_all_files()
+    sentences = split_sentences(read_text(files[0]))
+    print(f"--- Kiểm tra textrank.py với {len(sentences)} câu ---")
 
-        if duplicate:
-            continue
+    tfidf_matrix, _ = build_tfidf_matrix(sentences)
+    sim_matrix = calculate_similarity_matrix(tfidf_matrix)
 
-        summary.append((index, sentence))
+    scores = calculate_pagerank_numpy(sim_matrix)
+    summary = generate_summary(sentences, scores, top_n=3)
 
-        if len(summary) == top_n:
-            break
-
-    #Sort by original position so the summary reads in order
-    summary.sort(key=lambda item: item[0])
-
-    return [sentence for _, sentence in summary]
+    print("\n--- BẢN TÓM TẮT (3 CÂU) ---")
+    print(summary)
