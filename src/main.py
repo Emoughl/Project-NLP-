@@ -1,7 +1,7 @@
 from pathlib import Path
 from preprocess import get_all_files, read_text, split_sentences
-from textrank import apply_feature_weights, calculate_pagerank_numpy, generate_summary
-from vector import build_tfidf_matrix, calculate_similarity_matrix, extract_additional_features
+from textrank import calculate_pagerank_numpy, generate_summary
+from vector import build_tfidf_matrix, calculate_similarity_matrix
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -31,10 +31,6 @@ for input_file in files:
             f"  Bỏ qua {input_file}"
         )
         continue
-
-    # Trích xuất đặc trưng bổ sung & gộp trọng số vào đồ thị
-    extra_features = extract_additional_features(sentences)
-    similarity_matrix = apply_feature_weights(similarity_matrix, extra_features)
 
     # Xếp hạng câu bằng PageRank & trích xuất tóm tắt
     scores = calculate_pagerank_numpy(similarity_matrix)

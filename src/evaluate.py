@@ -1,17 +1,17 @@
-#Đánh giá kết quả tóm tắt: độ chính xác (Cosine TF-IDF) + nhận xét ưu/nhược điểm
-#Đo bằng Cosine Similarity trên vector TF-IDF giữa bản tóm tắt hệ thống và bản tham chiếu (DUC_SUM). Điểm càng gần 1.0 = càng giống tham chiếu
+# Đánh giá kết quả tóm tắt TextRank (Top node T = 18)
+# Metrics: Accuracy, Precision, Recall, F1
 
 from pathlib import Path
 import re
-
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
-TEXT_DIR = BASE_DIR / "data" / "DUC_TEXT" / "train"
 REFERENCE_DIR = BASE_DIR / "data" / "DUC_SUM"
+TRAIN_DIR = BASE_DIR / "data" / "DUC_TEXT" / "train"
+TEST_DIR = BASE_DIR / "data" / "DUC_TEXT" / "test"
 
 
 def read_file(path):
@@ -19,75 +19,101 @@ def read_file(path):
         return f.read()
 
 
-def clean_tagged_text(text):
+def split_sentences(text):
+    """Tách câu từ thẻ <s>...</s>."""
     sentences = re.findall(r"<s[^>]*>(.*?)</s>", text, flags=re.DOTALL)
-    sentences = [re.sub(r"\s+", " ", s).strip() for s in sentences]
-    return " ".join(sentences)
+    return [re.sub(r"\s+", " ", s).strip() for s in sentences if s.strip()]
 
 
-def accuracy_score(reference_text, system_text):
-    # Cosine Similarity giữa vector TF-IDF của 2 văn bản.
-    # Cùng config TfidfVectorizer với vector.py (stop_words, ngram 1-2).
-    if not reference_text.strip() or not system_text.strip():
-        return 0.0
+def find_source_file(doc_name):
+    """Tìm file nguồn trong train/ hoặc test/."""
+    for d in [TRAIN_DIR, TEST_DIR]:
+        p = d / doc_name
+        if p.exists():
+            return p
+    return None
+
+
+def count_matched(system_sents, reference_sents, threshold=0.3):
+    """Đếm số câu trích được (đúng) bằng cosine similarity."""
+    if not system_sents or not reference_sents:
+        return 0
+
+    all_sents = system_sents + reference_sents
     try:
-        vectorizer = TfidfVectorizer(
-            stop_words="english",
-            ngram_range=(1, 2),
-            min_df=1
-        )
-        tfidf = vectorizer.fit_transform([reference_text, system_text])
-        return float(cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0])
+        vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1)
+        tfidf = vectorizer.fit_transform(all_sents)
     except ValueError:
-        return 0.0
+        return 0
+
+    n_sys = len(system_sents)
+    sim = cosine_similarity(tfidf[:n_sys], tfidf[n_sys:])
+
+    matched = 0
+    used = set()
+    for i in range(n_sys):
+        best_j, best_score = -1, -1
+        for j in range(len(reference_sents)):
+            if j not in used and sim[i][j] > best_score:
+                best_score = sim[i][j]
+                best_j = j
+        if best_j >= 0 and best_score >= threshold:
+            matched += 1
+            used.add(best_j)
+
+    return matched
 
 
 def main():
-    results = []
+    all_acc, all_prec, all_rec, all_f1 = [], [], [], []
 
     for summary_file in sorted(OUTPUT_DIR.glob("*_summary.txt")):
         doc_name = summary_file.stem.replace("_summary", "")
 
         reference_file = REFERENCE_DIR / doc_name
-        original_file = TEXT_DIR / doc_name
-
-        if not reference_file.exists():
-            print(f"  Bỏ qua {doc_name}")
+        if not reference_file.exists() or reference_file.stat().st_size == 0:
             continue
 
-        system_summary = read_file(summary_file).strip()
-        reference_summary = clean_tagged_text(read_file(reference_file))
+        source_file = find_source_file(doc_name)
+        if source_file is None:
+            continue
 
-        accuracy = accuracy_score(reference_summary, system_summary)
+        source_sents = split_sentences(read_file(source_file))
+        ref_sents = split_sentences(read_file(reference_file))
+        sys_text = read_file(summary_file).strip()
+        sys_sents = [s.strip() for s in sys_text.split("\n") if s.strip()]
 
-        compression = None
-        if original_file.exists():
-            original_text = clean_tagged_text(read_file(original_file))
-            original_words = len(original_text.split())
-            summary_words = len(system_summary.split())
-            if original_words > 0:
-                compression = summary_words / original_words
+        if not source_sents or not ref_sents or not sys_sents:
+            continue
 
-        results.append(
-            {"doc": doc_name, "accuracy": accuracy, "compression": compression}
-        )
+        correct = count_matched(sys_sents, ref_sents)
 
-        print("=" * 60)
-        print(doc_name)
-        print(f"Độ chính xác (Cosine TF-IDF so với bản tham chiếu): {accuracy:.4f}")
-        if compression is not None:
-            print(f"Tỷ lệ nén (số từ tóm tắt / số từ gốc): {compression:.4f}")
+        # Acc  = #câu trích được (đúng) / #câu được gán nhãn (tổng câu nguồn)
+        acc = correct / len(source_sents) if source_sents else 0
 
-    if results:
-        avg_accuracy = float(np.mean([r["accuracy"] for r in results]))
-        compressions = [r["compression"] for r in results if r["compression"] is not None]
-        avg_compression = float(np.mean(compressions)) if compressions else None
+        # Precision = #câu trích được (đúng) / #câu trích được
+        prec = correct / len(sys_sents) if sys_sents else 0
 
-        print("TỔNG KẾT")
-        print(f"Số văn bản đánh giá: {len(results)}")
-        print(f"Độ chính xác trung bình: {avg_accuracy:.4f}")
-        if avg_compression is not None:
-            print(f"Tỷ lệ nén trung bình: {avg_compression:.4f}")
-    else:
-        print("Không tìm thấy file nào trong thư mục output để đánh giá")
-        print("chạy`python main.py` để có file tóm tắt")
+        # Recall = #câu trích được (đúng) / #câu gán nhãn (câu tóm tắt)
+        rec = correct / len(ref_sents) if ref_sents else 0
+
+        # F1 = 2 * (P * R) / (P + R)
+        f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0
+
+        all_acc.append(acc)
+        all_prec.append(prec)
+        all_rec.append(rec)
+        all_f1.append(f1)
+
+        print(f"  {doc_name:12s}  P={prec:.3f}  R={rec:.3f}  F1={f1:.1%}  (Giữa 2 file output có {correct} đúng / tổng {len(sys_sents)})")
+
+    if all_acc:
+        print(f"\n  TRUNG BÌNH ({len(all_acc)} văn bản, Top T = 18):")
+        print(f"    Accuracy  = {np.mean(all_acc):.4f}  ({np.mean(all_acc)*100:.1f}%)")
+        print(f"    Precision = {np.mean(all_prec):.4f}  ({np.mean(all_prec)*100:.1f}%)")
+        print(f"    Recall    = {np.mean(all_rec):.4f}  ({np.mean(all_rec)*100:.1f}%)")
+        print(f"    F1        = {np.mean(all_f1):.4f}  ({np.mean(all_f1)*100:.1f}%)")
+
+
+if __name__ == "__main__":
+    main()

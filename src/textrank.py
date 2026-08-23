@@ -47,29 +47,6 @@ def calculate_pagerank_numpy(
     return {i: score for i, score in enumerate(scores)}
 
 
-def apply_feature_weights(sim_matrix, extra_features, alpha=0.7):
-    # Gộp trọng số đặc trưng bổ sung vào ma trận Cosine Similarity
-    # CT: enhanced_sim = alpha * cosine_sim + (1 - alpha) * feature_matrix
-    num_sentences = len(extra_features)
-    if num_sentences == 0:
-        return sim_matrix
-
-    feature_scores = np.mean(extra_features, axis=1)
-
-    # Ma trận trọng số đặc trưng giữa các cặp câu
-    feature_matrix = np.zeros_like(sim_matrix)
-    for i in range(num_sentences):
-        for j in range(num_sentences):
-            if i != j:
-                feature_matrix[i][j] = (
-                    feature_scores[i] + feature_scores[j]
-                ) / 2.0
-
-    enhanced_sim_matrix = alpha * sim_matrix + (1 - alpha) * feature_matrix
-    np.fill_diagonal(enhanced_sim_matrix, 0)
-    return enhanced_sim_matrix
-
-
 def generate_summary(sentences, scores, top_n=3):
     #Chọn top_n câu điểm PageRank cao nhất, sắp xếp theo thứ tự gốc
     if not sentences or not scores:
@@ -88,11 +65,7 @@ def generate_summary(sentences, scores, top_n=3):
 # --- KIỂM TRA TRỰC TIẾP ---
 if __name__ == "__main__":
     from preprocess import get_all_files, read_text, split_sentences
-    from vector import (
-        build_tfidf_matrix,
-        calculate_similarity_matrix,
-        extract_additional_features,
-    )
+    from vector import build_tfidf_matrix, calculate_similarity_matrix
 
     files = get_all_files()
     sentences = split_sentences(read_text(files[0]))
@@ -100,10 +73,8 @@ if __name__ == "__main__":
 
     tfidf_matrix, _ = build_tfidf_matrix(sentences)
     sim_matrix = calculate_similarity_matrix(tfidf_matrix)
-    extra_features = extract_additional_features(sentences)
 
-    enhanced_sim = apply_feature_weights(sim_matrix, extra_features)
-    scores = calculate_pagerank_numpy(enhanced_sim)
+    scores = calculate_pagerank_numpy(sim_matrix)
     summary = generate_summary(sentences, scores, top_n=3)
 
     print("\n--- BẢN TÓM TẮT (3 CÂU) ---")
