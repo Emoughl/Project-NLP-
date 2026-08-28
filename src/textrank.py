@@ -56,7 +56,6 @@ def generate_summary(sentences, scores, top_n=3):
     ranked_sentences = sorted(
         scores.items(), key=lambda x: x[1], reverse=True
     )
-    #top_indices = sorted(idx for idx, _ in ranked_sentences[:top_n])
     top_indices = [idx for idx, _ in ranked_sentences[:top_n]]
 
     return "\n".join(sentences[i] for i in top_indices)
@@ -155,7 +154,7 @@ if __name__ == "__main__":
     sim_matrix = calculate_similarity_matrix(tfidf_matrix)
 
     scores = calculate_pagerank_numpy(sim_matrix)
-    summary = generate_summary(sentences, scores, top_n=3)
+    summary = generate_summary(sentences, scores, top_n=18)
 
-    print("\n--- BẢN TÓM TẮT (3 CÂU) ---")
+    print("\n--- BẢN TÓM TẮT (18 CÂU) ---")
     print(summary)

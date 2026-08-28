@@ -159,6 +159,57 @@ bình **15.1 câu** (ngắn nhất 10, dài nhất 20). Chọn T = 18 để đ�
 hệ thống tương đương bản của người, nhờ đó phép so Precision / Recall mới công bằng
 — nếu T quá nhỏ thì Recall bị ép xuống, T quá lớn thì Precision bị ép xuống.
 
+#### Khảo sát tham số T
+
+Con số 18 không chọn theo một văn bản đơn lẻ. Dưới đây là kết quả quét T trên **cả 34
+văn bản** có bản tham chiếu, cho cả phương pháp gốc lẫn phương pháp cải tiến (§8):
+
+| T cố định | Precision | Recall | F1 | F1 (bản cải tiến) |
+|---|---|---|---|---|
+| 10 | 0.171 | 0.119 | 13.9% | 20.4% |
+| 15 | 0.159 | 0.165 | 16.0% | 22.0% |
+| **18** | **0.157** | **0.196** | **17.2%** | **22.3%** |
+| 20 | 0.149 | 0.207 | 17.1% | 22.2% |
+| 25 | 0.141 | 0.248 | 17.8% | 21.6% |
+| 30 | 0.128 | 0.268 | 17.2% | 20.7% |
+
+F1 đạt đỉnh trong khoảng T = 18–25 với phương pháp gốc, và đúng tại **T = 18** với
+phương pháp cải tiến — nên hệ thống chốt T = 18 cho cả hai để so sánh công bằng.
+
+#### Vì sao KHÔNG chọn T theo tỉ lệ phần trăm số câu
+
+Một hướng tự nhiên là cho T co giãn theo độ dài văn bản, ví dụ lấy 30% số câu. Nhưng
+dữ liệu DUC cho thấy bản tóm tắt của người viết có độ dài **gần như cố định**, không
+tỉ lệ với văn bản gốc:
+
+| | Trung bình | Nhỏ nhất | Lớn nhất |
+|---|---|---|---|
+| Số câu văn bản gốc | 309 | 143 | 680 |
+| Số câu bản tham chiếu | **15.1** | 10 | 20 |
+| Tỉ lệ tham chiếu / gốc | 5.7% | 1.7% | 14.0% |
+
+Người viết luôn tóm tắt khoảng 15 câu dù bài dài 143 hay 680 câu — tỉ lệ dao động
+1.7%–14.0% chính là *hệ quả* của việc độ dài bài thay đổi, chứ không phải vì họ tóm
+tắt theo tỉ lệ. Kết quả thực nghiệm cũng xác nhận điều đó:
+
+| T = tỉ lệ số câu | T trung bình | Precision | Recall | F1 | F1 (cải tiến) |
+|---|---|---|---|---|---|
+| 3% | 9.3 | 0.191 | 0.106 | 13.1% | 17.9% |
+| 5% | 15.5 | 0.171 | 0.163 | 16.0% | 20.3% |
+| 7% | 21.6 | 0.151 | 0.206 | 16.7% | 21.4% |
+| 10% | 30.9 | 0.130 | 0.249 | 16.4% | 21.4% |
+| 30% | 92.7 | 0.100 | 0.563 | 16.7% | 18.2% |
+
+Không mức tỉ lệ nào vượt được T = 18 cố định. Riêng mức 30% sinh ra bản tóm tắt trung
+bình **93 câu** (văn bản dài nhất là 204 câu — dài gần bằng một phần ba bài gốc), khiến
+Precision rơi xuống 0.100. Bản lai giữa hai cách (tỉ lệ nhưng chặn trên/dưới) cũng chỉ
+đạt tối đa 17.1% / 21.9%, vẫn không hơn.
+
+> Kết luận: với bộ DUC — nơi bản tóm tắt tham chiếu có độ dài cố định — **T cố định là
+> lựa chọn đúng**. Nếu đổi sang bộ dữ liệu mà bản tóm tắt dài tỉ lệ với văn bản gốc thì
+> mới nên chuyển sang T theo tỉ lệ. Giao diện web (`api.py`) vẫn cho người dùng chọn tỉ
+> lệ nén vì văn bản tự do dán vào thường ngắn hơn nhiều so với văn bản DUC.
+
 ---
 
 ## 6. Kết quả tóm tắt
@@ -230,7 +281,9 @@ python evaluate.py --improved   # chấm bản cải tiến -> F1 22.3%
   khác, dẫn tới điểm PageRank cao.
 - **Chưa xử lý trùng lặp nội dung.** Các câu được chọn có thể lặp ý nhau, vì thuật
   toán chọn Top-T độc lập chứ không xét độ đa dạng.
-- **T cố định = 18** cho mọi văn bản, chưa co giãn theo độ dài văn bản gốc.
+- **T cố định = 18** cho mọi văn bản. Đây là lựa chọn có căn cứ với bộ DUC (xem phần
+  khảo sát tham số ở §5: T theo tỉ lệ đều cho F1 thấp hơn), nhưng sẽ phải xem lại nếu
+  áp dụng lên bộ dữ liệu có bản tóm tắt dài tỉ lệ với văn bản gốc.
 - Chỉ số F1 ~17% nhìn thấp, nhưng cần lưu ý cách chấm rất khắt khe: khớp câu theo
   ngưỡng cosine 0.3 và bản tham chiếu do người viết thường **diễn đạt lại** chứ
   không trích nguyên văn.
@@ -326,12 +379,19 @@ Lý do: cắt ngưỡng loại bỏ quá nhiều cạnh yếu nhưng hợp lệ,
 thành phần liên thông rời rạc, PageRank không còn lan truyền được điểm giữa các cụm.
 Vì vậy hệ thống **giữ nguyên đồ thị đầy đủ có trọng số**.
 
+### Cải tiến đã thử nhưng **không** hiệu quả: cho T co giãn theo tỉ lệ
+
+Ý tưởng: thay T cố định bằng T = tỉ lệ phần trăm số câu văn bản gốc, để bài dài thì
+tóm tắt dài hơn. Thực nghiệm cho thấy mọi mức tỉ lệ đều **thua** T = 18 cố định
+(3% → F1 13.1%, 5% → 16.0%, 7% → 16.7%, 10% → 16.4%, 30% → 16.7%), kể cả bản lai có
+chặn trên/dưới. Nguyên nhân đã phân tích ở §5: bản tóm tắt tham chiếu của DUC dài gần
+như cố định (~15 câu) bất kể văn bản gốc dài 143 hay 680 câu.
+
 ### Hướng cải tiến tiếp theo
 
 | Hướng | Mô tả |
 |---|---|
 | **Thay TF-IDF bằng embedding** | Dùng Sentence-BERT để tính similarity theo ngữ nghĩa thay vì trùng từ — khắc phục nhược điểm lớn nhất của phương pháp |
-| **T co giãn** | Chọn T theo tỉ lệ phần trăm số câu văn bản gốc thay vì cố định 18 |
 | **Đánh giá bằng ROUGE** | Bổ sung ROUGE-1 / ROUGE-2 / ROUGE-L bên cạnh độ đo khớp câu hiện tại |
 | **Chuẩn hoá theo độ dài câu** | Chia trọng số cạnh cho log độ dài câu để giảm thiên vị câu dài |
 
