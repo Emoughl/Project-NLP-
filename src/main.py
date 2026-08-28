@@ -10,10 +10,7 @@ from vector import build_tfidf_matrix, calculate_similarity_matrix
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Chạy "python main.py --improved" để dùng PHƯƠNG PHÁP CẢI TIẾN (tiêu chí 8):
-# thêm đặc trưng vị trí câu vào điểm xếp hạng và chọn câu bằng MMR
-# (xem phần cải tiến trong textrank.py). Kết quả ghi ra thư mục riêng
-# output_improved/ để so sánh được với bản gốc.
+# Run "python main.py --improved" cho PHƯƠNG PHÁP CẢI TIẾN
 USE_IMPROVED = "--improved" in sys.argv
 
 OUTPUT_DIR = BASE_DIR / ("output_improved" if USE_IMPROVED else "output")
@@ -29,14 +26,16 @@ else:
 for input_file in files:
     print(f"\nĐang xử lý: {input_file}")
 
-    # Đọc dữ liệu & tách câu
+    # B1: Đọc dữ liệu 
+    # B2: Tách câu
     text = read_text(input_file)
     sentences = split_sentences(text)
 
     if len(sentences) == 0:
         continue
 
-    # Biểu diễn TF-IDF & tính ma trận tương đồng Cosine
+    # B3: Biểu diễn TF-IDF 
+    # B4: Tính ma trận tương đồng Cosine
     try:
         tfidf_matrix, vectorizer = build_tfidf_matrix(sentences)
         similarity_matrix = calculate_similarity_matrix(tfidf_matrix)
@@ -46,7 +45,8 @@ for input_file in files:
         )
         continue
 
-    # Xếp hạng câu bằng PageRank & trích xuất tóm tắt
+    # B5: Xếp hạng câu bằng PageRank 
+    # B6: Trích xuất tóm tắt
     scores = calculate_pagerank_numpy(similarity_matrix)
 
     if USE_IMPROVED:
@@ -61,6 +61,6 @@ for input_file in files:
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(summary)
 
-    print(f"Đã lưu bản tóm tắt tại: {output_file.name}")
+    print(f"Đã lưu bản tóm tắt : {output_file.name}")
 
-print("\nFinished!")
+print("\nHoàn Thành!")

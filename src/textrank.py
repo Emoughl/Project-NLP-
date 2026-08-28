@@ -61,32 +61,9 @@ def generate_summary(sentences, scores, top_n=3):
 
     return "\n".join(sentences[i] for i in top_indices)
 
-
-# ======================================================================
-# PHẦN CẢI TIẾN (tiêu chí 8)
-#
-# Hai cải tiến được thêm vào bên trên pipeline gốc, dùng lại nguyên vẹn
-# ma trận đồ thị và hàm calculate_pagerank_numpy() ở trên:
-#
-#   1) THÊM ĐẶC TRƯNG BIỂU DIỄN DỮ LIỆU — vị trí câu.
-#      TextRank thuần bỏ qua hoàn toàn vị trí câu, trong khi văn bản tin
-#      tức viết theo cấu trúc "kim tự tháp ngược" (thông tin cốt lõi nằm
-#      ở đầu bài).
-#
-#   2) CHỐNG TRÙNG LẶP NỘI DUNG KHI CHỌN CÂU — MMR.
-#      Top-T độc lập hay chọn phải các câu giống nhau, vì chính nhờ giống
-#      nhau mà chúng cùng nhận được nhiều "phiếu bầu".
-#
-# Kết quả trên 34 văn bản có bản tham chiếu DUC_SUM (T = 18):
-#     TextRank gốc                     P=0.157  R=0.196  F1=17.2%
-#     + đặc trưng vị trí (alpha=0.5)   P=0.180  R=0.222  F1=19.7%
-#     + MMR (lambda=0.7)               P=0.183  R=0.232  F1=20.2%
-#     + cả hai (alpha=0.3, lambda=0.7) P=0.203  R=0.253  F1=22.3%
-#
-# Cách chạy:
-#     python main.py --improved       # sinh tóm tắt vào output_improved/
-#     python evaluate.py --improved   # chấm điểm bản cải tiến
-# ======================================================================
+# CẢI TIẾN : 
+#1) THÊM ĐẶC TRƯNG BIỂU DIỄN DỮ LIỆU — vị trí câu.
+#2) CHỐNG TRÙNG LẶP NỘI DUNG KHI CHỌN CÂU — MMR.
 
 ALPHA = 0.3    # trọng số của đặc trưng vị trí câu
 LAMBDA = 0.7   # cân bằng "quan trọng" <-> "đa dạng" trong MMR

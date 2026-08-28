@@ -1,5 +1,5 @@
 # Đánh giá kết quả tóm tắt TextRank (Top node T = 18)
-# Metrics: Precision, Recall, F1
+# Ba tiêu chí :Precision, Recall, F1
 
 import sys
 from pathlib import Path
@@ -30,7 +30,7 @@ def find_source_file(doc_name):
 
 
 def count_matched(system_sents, reference_sents, threshold=0.3):
-    #Đếm số câu trích được (đúng) bằng cosine similarityS
+    #Đếm số câu trích (đúng)
     if not system_sents or not reference_sents:
         return 0
 
@@ -60,8 +60,8 @@ def count_matched(system_sents, reference_sents, threshold=0.3):
 
 
 def main():
-    label = "TEXTRANK CẢI TIẾN (vị trí + MMR)" if USE_IMPROVED else "TEXTRANK GỐC"
-    print(f"ĐÁNH GIÁ: {label}  —  thư mục {OUTPUT_DIR.name}/\n")
+    label = "Phương pháp TextRank(Đã cải tiến - vị trí + MMR)" if USE_IMPROVED else "Phương pháp TextRank(Gốc)"
+    print(f"Đánh Giá: {label}  —  thư mục {OUTPUT_DIR.name}/\n")
 
     all_prec, all_rec, all_f1 = [], [], []
     skipped = []
@@ -71,12 +71,12 @@ def main():
 
         reference_file = REFERENCE_DIR / doc_name
         if not reference_file.exists() or reference_file.stat().st_size == 0:
-            skipped.append((doc_name, "thiếu/rỗng bản tham chiếu DUC_SUM"))
+            skipped.append((doc_name, "không có bản tham chiếu"))
             continue
 
         source_file = find_source_file(doc_name)
         if source_file is None:
-            skipped.append((doc_name, "không tìm thấy văn bản nguồn"))
+            skipped.append((doc_name, "không tìm thấy văn bản"))
             continue
 
         source_sents = split_sentences(read_file(source_file))
@@ -108,13 +108,13 @@ def main():
     total = len(all_prec) + len(skipped)
 
     if all_prec:
-        print(f"\n  TRUNG BÌNH ({len(all_prec)}/{total} văn bản được chấm, Top T = 18):")
+        print(f"\n  Trung bình ({len(all_prec)}/{total} văn bản được chấm với Top T = 18):")
         print(f"    Precision = {np.mean(all_prec):.4f}  ({np.mean(all_prec)*100:.1f}%)")
         print(f"    Recall    = {np.mean(all_rec):.4f}  ({np.mean(all_rec)*100:.1f}%)")
         print(f"    F1        = {np.mean(all_f1):.4f}  ({np.mean(all_f1)*100:.1f}%)")
 
     if skipped:
-        print(f"\n  BỎ QUA {len(skipped)}/{total} văn bản:")
+        print(f"\n  Bỏ qua {len(skipped)}/{total} văn bản:")
         for doc_name, reason in skipped:
             print(f"    {doc_name:12s}  — {reason}")
 
