@@ -14,7 +14,7 @@ def build_tfidf_matrix(sentences):
 
 
 def calculate_similarity_matrix(tfidf_matrix):
-    #Tính ma trận Cosine Similarity giữa tất cả cặp câu, xóa đường chéo."""
+    # Tính ma trận Cosine Similarity giữa tất cả cặp câu, xóa đường chéo
     sim_matrix = cosine_similarity(tfidf_matrix, tfidf_matrix)
     np.fill_diagonal(sim_matrix, 0)
     return sim_matrix

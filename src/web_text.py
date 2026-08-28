@@ -1,11 +1,9 @@
-"""
-Sentence splitter dùng riêng cho giao diện web (nhận văn bản tự do do
-người dùng dán vào), khác với preprocess.split_sentences() vốn chỉ đọc
-được định dạng gắn thẻ <s>...</s> của dataset DUC_TEXT.
-
-Không đụng tới preprocess.py / main.py hiện có — module này độc lập,
-chỉ được api.py gọi tới.
-"""
+# Sentence splitter dùng riêng cho giao diện web (nhận văn bản tự do do
+# người dùng dán vào), khác với preprocess.split_sentences() vốn chỉ đọc
+# được định dạng gắn thẻ <s>...</s> của dataset DUC_TEXT.
+#
+# Không đụng tới preprocess.py / main.py hiện có — module này độc lập,
+# chỉ được api.py gọi tới.
 
 import re
 
@@ -45,12 +43,10 @@ _DUC_TAG_PATTERN = re.compile(r"<s[^>]*>(.*?)</s>", re.DOTALL | re.IGNORECASE)
 
 
 def _split_duc_tagged(text):
-    """
-    Nếu người dùng lỡ dán nguyên văn bản có định dạng thẻ của dataset DUC_TEXT
-    (<s docid="..." num="..." wdcount="...">...</s>), bóc câu ra từ trong thẻ
-    thay vì tách theo dấu câu — tránh việc các thuộc tính docid/num/wdcount
-    (vốn gần như không lặp lại giữa các câu) làm nhiễu TF-IDF.
-    """
+    # Nếu người dùng lỡ dán nguyên văn bản có định dạng thẻ của dataset DUC_TEXT
+    # (<s docid="..." num="..." wdcount="...">...</s>), bóc câu ra từ trong thẻ
+    # thay vì tách theo dấu câu — tránh việc các thuộc tính docid/num/wdcount
+    # (vốn gần như không lặp lại giữa các câu) làm nhiễu TF-IDF.
     matches = _DUC_TAG_PATTERN.findall(text)
     if not matches:
         return None
@@ -60,7 +56,7 @@ def _split_duc_tagged(text):
 
 
 def _regex_split(text):
-    """Fallback: tách câu bằng regex khi không có nltk/punkt."""
+    # Fallback: tách câu bằng regex khi không có nltk/punkt.
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return []
@@ -69,11 +65,9 @@ def _regex_split(text):
 
 
 def clean_reference_text(text):
-    """
-    Chuẩn hoá văn bản tóm tắt tham chiếu (dùng để tính Cosine TF-IDF):
-    nếu là file dạng DUC_SUM (có thẻ <s>...</s>) thì bóc câu ra và nối lại,
-    ngược lại chỉ chuẩn hoá khoảng trắng.
-    """
+    # Chuẩn hoá văn bản tóm tắt tham chiếu (dùng để tính Cosine TF-IDF):
+    # nếu là file dạng DUC_SUM (có thẻ <s>...</s>) thì bóc câu ra và nối lại,
+    # ngược lại chỉ chuẩn hoá khoảng trắng.
     text = (text or "").strip()
     if not text:
         return ""
@@ -86,7 +80,7 @@ def clean_reference_text(text):
 
 
 def split_sentences_generic(text):
-    """Tách một đoạn văn bản tự do thành danh sách câu."""
+    # Tách một đoạn văn bản tự do thành danh sách câu.
     text = (text or "").strip()
     if not text:
         return []

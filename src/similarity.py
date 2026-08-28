@@ -33,7 +33,7 @@ def _keywords(text):
 
 
 def keyword_overlap(reference_text, candidate_text):
-    """Liệt kê từ khóa xuất hiện ở cả bản tham chiếu và bản tóm tắt."""
+    # Liệt kê từ khóa xuất hiện ở cả bản tham chiếu và bản tóm tắt.
     ref_set = set(_keywords(reference_text))
     cand_set = set(_keywords(candidate_text))
     shared = sorted(ref_set & cand_set)

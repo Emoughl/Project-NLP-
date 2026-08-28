@@ -1,11 +1,9 @@
-"""
-Flask API nhỏ bọc lại pipeline TextRank hiện có (preprocess/vector/textrank)
-để phục vụ giao diện web (static/index.html).
-
-Chạy:
-    python api.py
-    truy cập http://127.0.0.1:5000
-"""
+# Flask API nhỏ bọc lại pipeline TextRank hiện có (preprocess/vector/textrank)
+# để phục vụ giao diện web (static/index.html).
+#
+# Chạy:
+#     python api.py
+#     truy cập http://127.0.0.1:5000
 
 import sys
 from pathlib import Path
