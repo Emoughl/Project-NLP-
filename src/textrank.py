@@ -47,7 +47,8 @@ def calculate_pagerank_numpy(
 
 
 def generate_summary(sentences, scores, top_n=3):
-    #Chọn top_n câu điểm PageRank cao nhất, sắp xếp theo thứ tự gốc
+    #Chọn top_n câu điểm PageRank cao nhất, liệt kê theo điểm giảm dần
+    #(để đối chiếu trực tiếp với bảng xếp hạng trong notebook)
     if not sentences or not scores:
         return ""
 
@@ -131,7 +132,8 @@ def generate_summary_improved(
     sentences, scores, sim_matrix, top_n=3, alpha=ALPHA, lam=LAMBDA
 ):
     #Bản cải tiến của generate_summary(): điểm PageRank + đặc trưng vị trí,
-    #chọn câu bằng MMR, vẫn sắp lại theo thứ tự gốc như bản gốc.
+    #chọn câu bằng MMR, rồi SẮP LẠI THEO THỨ TỰ VĂN BẢN (khác generate_summary()
+    #vốn liệt kê theo điểm) để bản tóm tắt đọc liền mạch.
     if not sentences or not scores:
         return ""
 

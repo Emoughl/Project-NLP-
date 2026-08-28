@@ -20,7 +20,7 @@ câu mới**.
 | | |
 |---|---|
 | **Input** | Một văn bản tiếng Anh thuộc bộ dữ liệu DUC_TEXT (định dạng gắn thẻ `<s>...</s>`) |
-| **Output** | File `<tên_văn_bản>_summary.txt` chứa T câu được chọn, giữ nguyên thứ tự xuất hiện trong văn bản gốc |
+| **Output** | File `<tên_văn_bản>_summary.txt` chứa T câu được chọn, liệt kê theo điểm PageRank giảm dần (bản cải tiến ở §8 thì sắp theo thứ tự văn bản) |
 
 ---
 
@@ -51,7 +51,7 @@ Toàn bộ pipeline nằm trong `src/main.py`, gồm 6 bước:
 | 3 | Biểu diễn mỗi câu thành vector TF-IDF | `vector.build_tfidf_matrix` |
 | 4 | **Xây đồ thị**: tính ma trận kề bằng Cosine Similarity | `vector.calculate_similarity_matrix` |
 | 5 | **Xếp hạng câu** bằng PageRank (Power Iteration) | `textrank.calculate_pagerank_numpy` |
-| 6 | Chọn Top-T câu, sắp lại theo thứ tự gốc, ghi ra file | `textrank.generate_summary` |
+| 6 | Chọn Top-T câu theo điểm PageRank, ghi ra file | `textrank.generate_summary` |
 
 ---
 
@@ -151,8 +151,14 @@ tức luôn dừng vì đạt ngưỡng hội tụ chứ không phải vì chạ
 
 ### Bước 3 — Chọn câu
 
-Sắp xếp câu theo điểm PageRank giảm dần, lấy **Top-T = 18 câu**, rồi **sắp lại theo
-thứ tự xuất hiện gốc** trong văn bản để bản tóm tắt giữ được mạch văn tự nhiên.
+Sắp xếp câu theo điểm PageRank giảm dần và lấy **Top-T = 18 câu**.
+
+**Về thứ tự câu trong file kết quả:** phương pháp gốc giữ nguyên **thứ tự điểm giảm
+dần**, để đối chiếu trực tiếp được với bảng xếp hạng trong notebook — chạy notebook lấy
+top 18 câu thì khớp đúng từng dòng với file trong `output/`. Ngược lại, phương pháp cải
+tiến (§8) **sắp lại theo thứ tự xuất hiện trong văn bản** để bản tóm tắt đọc liền mạch,
+vì đó mới là bản dùng để đọc. Cách sắp xếp **không ảnh hưởng Precision / Recall / F1**:
+bộ chấm so từng câu với bản tham chiếu chứ không xét thứ tự.
 
 **Vì sao T = 18?** Các bản tóm tắt tham chiếu do người viết trong `DUC_SUM` dài trung
 bình **15.1 câu** (ngắn nhất 10, dài nhất 20). Chọn T = 18 để độ dài bản tóm tắt của
@@ -222,7 +228,9 @@ output_improved/                    # Phương pháp cải tiến (mục 8)
 └── <tên_văn_bản>_summary.txt      (50 file)
 ```
 
-Mỗi file chứa 18 câu được trích, mỗi câu một dòng, theo đúng thứ tự trong văn bản gốc.
+Mỗi file chứa 18 câu được trích, mỗi câu một dòng: `output/` liệt kê theo **điểm
+PageRank giảm dần**, còn `output_improved/` sắp theo **thứ tự xuất hiện trong văn bản gốc**
+(lý do ở §5, bước 3).
 
 **Về thư mục `data/DUC_TEXT/test/`:** TextRank là phương pháp **không giám sát**, không
 có tham số nào được học từ dữ liệu, nên không cần chia train/test để tránh rò rỉ dữ
@@ -308,6 +316,7 @@ chọn `--improved` để chạy nhánh cải tiến.
 | Xây đồ thị | `vector.calculate_similarity_matrix` | *dùng lại* |
 | Xếp hạng | `textrank.calculate_pagerank_numpy` | *dùng lại* + `combine_scores` (đặc trưng vị trí) |
 | Chọn câu | `textrank.generate_summary` (Top-T) | `textrank.generate_summary_improved` (MMR) |
+| Thứ tự câu trong file | theo điểm PageRank giảm dần | sắp lại theo thứ tự văn bản |
 | Kết quả ghi ra | `output/` | `output_improved/` |
 
 ### Cải tiến 1 — Thêm đặc trưng biểu diễn dữ liệu: vị trí câu
