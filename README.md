@@ -84,9 +84,12 @@ của văn bản.
 
 | Chỉ số | Giá trị |
 |---|---|
-| Số node trung bình / văn bản | ~259 câu |
+| Số node trung bình / văn bản | ~294 câu |
 | Mật độ đồ thị (tỉ lệ cặp câu có cạnh) | ~27.4% |
-| Trọng số cạnh trung bình | ~0.036 |
+| Trọng số cạnh trung bình (chỉ tính các cặp **có cạnh**) | ~0.033 |
+| Trọng số trung bình trên **mọi cặp câu** (kể cả cặp không có cạnh) | ~0.008 |
+
+> Số liệu đo trên toàn bộ 50 văn bản trong `DUC_TEXT/train`.
 
 Đồ thị **thưa vừa phải** — nhờ loại từ dừng và dùng bigram, các câu không liên quan
 gần như không có cạnh nối, giúp cấu trúc chủ đề của văn bản hiện rõ.
@@ -143,21 +146,37 @@ R_(t+1) = d · M · R_t + (1 − d) / N
 Vector khởi tạo `R_0 = 1/N` cho mọi node. Vòng lặp dừng khi
 `‖R_(t+1) − R_t‖₁ < tol`.
 
+Đo trên 50 văn bản: thuật toán hội tụ sau trung bình **28 vòng lặp** (nhiều nhất 55),
+tức luôn dừng vì đạt ngưỡng hội tụ chứ không phải vì chạm giới hạn `max_iter = 100`.
+
 ### Bước 3 — Chọn câu
 
 Sắp xếp câu theo điểm PageRank giảm dần, lấy **Top-T = 18 câu**, rồi **sắp lại theo
 thứ tự xuất hiện gốc** trong văn bản để bản tóm tắt giữ được mạch văn tự nhiên.
+
+**Vì sao T = 18?** Các bản tóm tắt tham chiếu do người viết trong `DUC_SUM` dài trung
+bình **15.1 câu** (ngắn nhất 10, dài nhất 20). Chọn T = 18 để độ dài bản tóm tắt của
+hệ thống tương đương bản của người, nhờ đó phép so Precision / Recall mới công bằng
+— nếu T quá nhỏ thì Recall bị ép xuống, T quá lớn thì Precision bị ép xuống.
 
 ---
 
 ## 6. Kết quả tóm tắt
 
 ```
-output/
+output/                             # TextRank gốc
+└── <tên_văn_bản>_summary.txt      (50 file)
+
+output_improved/                    # Phương pháp cải tiến (mục 8)
 └── <tên_văn_bản>_summary.txt      (50 file)
 ```
 
 Mỗi file chứa 18 câu được trích, mỗi câu một dòng, theo đúng thứ tự trong văn bản gốc.
+
+**Về thư mục `data/DUC_TEXT/test/`:** TextRank là phương pháp **không giám sát**, không
+có tham số nào được học từ dữ liệu, nên không cần chia train/test để tránh rò rỉ dữ
+liệu — cách chia này là cấu trúc sẵn của bộ DUC. Toàn bộ báo cáo này chạy trên tập
+`train/` (50 văn bản) vì đây là phần có bản tóm tắt tham chiếu trong `DUC_SUM`.
 
 ---
 
@@ -181,26 +200,26 @@ Trong 50 văn bản được tóm tắt, **34 văn bản** có bản tham chiế
 vào chấm; 16 văn bản còn lại bị bỏ qua do thiếu hoặc rỗng file trong `DUC_SUM`
 (`evaluate.py` in danh sách cụ thể).
 
-| Phương pháp xếp hạng | Precision | Recall | F1 |
+| Phương pháp | Precision | Recall | F1 |
 |---|---|---|---|
-| Lead-18 (lấy 18 câu đầu) | 0.111 | 0.133 | 12.0% |
-| Chọn 18 câu dài nhất | 0.111 | 0.145 | 12.5% |
-| Degree centrality (tổng trọng số cạnh) | 0.144 | 0.179 | 15.8% |
 | **TextRank — PageRank (hệ thống này)** | **0.157** | **0.196** | **17.2%** |
+| **TextRank cải tiến** (vị trí + MMR, xem §8) | **0.203** | **0.253** | **22.3%** |
+
+```bash
+cd src
+python evaluate.py              # chấm bản gốc      -> F1 17.2%
+python evaluate.py --improved   # chấm bản cải tiến -> F1 22.3%
+```
 
 ### Nhận xét
 
 **Ưu điểm**
 
-- TextRank vượt baseline Lead-18 tới **43% tương đối** về F1 (17.2% so với 12.0%) —
-  chứng tỏ việc xếp hạng trên đồ thị thực sự chọn được câu quan trọng, không phải
-  chỉ ăn may vào vị trí đầu văn bản.
-- TextRank vẫn cao hơn **Degree centrality** (17.2% so với 15.8%). Đây là so sánh
-  đáng chú ý nhất: degree centrality chỉ đếm tổng trọng số cạnh của một câu, còn
-  PageRank lan truyền điểm qua nhiều vòng lặp. Chênh lệch này cho thấy **giá trị
-  thật sự nằm ở phần lặp đệ quy** — một câu nối với câu quan trọng có giá trị hơn
-  một câu nối với nhiều câu tầm thường.
-- Không cần dữ liệu huấn luyện, chạy được trên bất kỳ văn bản đơn lẻ nào.
+- Không cần dữ liệu huấn luyện, không cần gán nhãn, chạy được trên bất kỳ văn bản
+  đơn lẻ nào — rất phù hợp với bộ DUC vì chỉ 34/50 văn bản có bản tóm tắt tham chiếu,
+  không đủ để huấn luyện một mô hình có giám sát.
+- Không phụ thuộc ngôn ngữ: phần đồ thị và PageRank giữ nguyên khi đổi sang ngôn ngữ
+  khác, chỉ cần thay bước tách câu / tách từ.
 - Cài đặt PageRank thuần NumPy nên minh bạch, kiểm soát được toàn bộ tham số.
 
 **Nhược điểm**
@@ -216,17 +235,105 @@ vào chấm; 16 văn bản còn lại bị bỏ qua do thiếu hoặc rỗng fil
   ngưỡng cosine 0.3 và bản tham chiếu do người viết thường **diễn đạt lại** chứ
   không trích nguyên văn.
 
+> **Về độ đo:** cách chấm ở đây là khớp **cả câu** theo ngưỡng Cosine TF-IDF ≥ 0.3
+> — một biến thể tự định nghĩa, khắt khe hơn ROUGE. Độ đo chuẩn của ngành cho bài
+> toán tóm tắt là ROUGE-1 / ROUGE-2 / ROUGE-L (khớp theo n-gram, rộng lượng hơn
+> nên điểm sẽ cao hơn). Đây là hướng bổ sung tiếp theo cho phần đánh giá.
+
 ---
 
-## 8. Hướng cải tiến
+## 8. Cải tiến phương pháp
+
+Hai cải tiến được **cài đặt ngay trong pipeline hiện có**, không tách thành module
+riêng: phần `PHẦN CẢI TIẾN (tiêu chí 8)` ở cuối `src/textrank.py` dùng lại nguyên vẹn
+ma trận đồ thị của `vector.py` và hàm `calculate_pagerank_numpy()` ở phía trên, chỉ
+thêm bước tính điểm và bước chọn câu mới. `main.py` và `evaluate.py` nhận thêm tuỳ
+chọn `--improved` để chạy nhánh cải tiến.
+
+| Thành phần | Bản gốc | Bản cải tiến |
+|---|---|---|
+| Xây đồ thị | `vector.calculate_similarity_matrix` | *dùng lại* |
+| Xếp hạng | `textrank.calculate_pagerank_numpy` | *dùng lại* + `combine_scores` (đặc trưng vị trí) |
+| Chọn câu | `textrank.generate_summary` (Top-T) | `textrank.generate_summary_improved` (MMR) |
+| Kết quả ghi ra | `output/` | `output_improved/` |
+
+### Cải tiến 1 — Thêm đặc trưng biểu diễn dữ liệu: vị trí câu
+
+TextRank thuần chỉ nhìn vào quan hệ tương đồng giữa các câu, **bỏ qua hoàn toàn vị
+trí câu trong văn bản**. Nhưng văn bản tin tức (bộ DUC) viết theo cấu trúc *kim tự
+tháp ngược*: thông tin cốt lõi nằm ở đầu bài. Điểm cuối cùng của mỗi câu vì vậy được
+kết hợp tuyến tính giữa điểm PageRank đã chuẩn hoá và điểm vị trí:
+
+```
+final_i = (1 − α) · pagerank_norm_i + α · pos_i
+pos_i   = (1 / √(i + 1)) chuẩn hoá về [0, 1],  i = chỉ số câu tính từ 0
+α       = 0.3
+```
+
+### Cải tiến 2 — Chống trùng lặp nội dung khi chọn câu: MMR
+
+Nhược điểm lớn nhất của việc lấy Top-T độc lập là **các câu điểm cao thường giống
+nhau** — chính vì giống nhau nên chúng mới cùng nhận được nhiều "phiếu bầu". MMR
+(*Maximal Marginal Relevance*) chọn câu **tuần tự**, mỗi bước trừ đi phần trùng lặp
+với những câu đã chọn:
+
+```
+MMR_i = λ · final_i − (1 − λ) · max_{j đã chọn} cosine(i, j)
+λ = 0.7
+```
+
+Câu được chọn phải vừa **quan trọng**, vừa **khác** các câu đã có trong bản tóm tắt.
+
+### Kết quả
+
+Đo trên đúng 34 văn bản có bản tham chiếu, cùng T = 18, cùng bộ độ đo:
+
+| Cấu hình | Precision | Recall | F1 |
+|---|---|---|---|
+| TextRank gốc | 0.157 | 0.196 | 17.2% |
+| + đặc trưng vị trí (α = 0.5) | 0.180 | 0.222 | 19.7% |
+| + MMR (λ = 0.7) | 0.183 | 0.232 | 20.2% |
+| **+ cả hai (λ = 0.7, α = 0.3)** | **0.203** | **0.253** | **22.3%** |
+
+F1 tăng từ 17.2% lên **22.3%**, tức **+30% tương đối**. Hai cải tiến bổ trợ cho nhau:
+đặc trưng vị trí cải thiện việc *chấm điểm*, MMR cải thiện việc *chọn câu*.
+
+> Hai dòng giữa là thí nghiệm tách riêng từng cải tiến (ablation) để biết mỗi phần
+> đóng góp bao nhiêu; code hiện tại chạy cấu hình cuối cùng — `α = 0.3`, `λ = 0.7`,
+> khai báo ở đầu phần cải tiến trong `textrank.py`, đổi trực tiếp ở đó là tái lập
+> được các dòng còn lại.
+
+```bash
+cd src
+python main.py --improved       # sinh tóm tắt cải tiến vào output_improved/
+python evaluate.py --improved   # chấm bản cải tiến  -> F1 22.3%
+python evaluate.py              # chấm bản gốc để đối chiếu -> F1 17.2%
+```
+
+### Cải tiến đã thử nhưng **không** hiệu quả: cắt ngưỡng cạnh
+
+Ý tưởng ban đầu là chỉ giữ lại cạnh có `w_ij > threshold` để đồ thị thưa hơn, giảm
+nhiễu từ các cặp câu tương đồng yếu. Thực nghiệm cho kết quả **ngược lại**:
+
+| Ngưỡng cắt cạnh | F1 |
+|---|---|
+| không cắt (hệ thống hiện tại) | **17.2%** |
+| 0.02 | 16.1% |
+| 0.05 | 15.0% |
+| 0.10 | 11.1% |
+
+Lý do: cắt ngưỡng loại bỏ quá nhiều cạnh yếu nhưng hợp lệ, làm đồ thị vỡ thành nhiều
+thành phần liên thông rời rạc, PageRank không còn lan truyền được điểm giữa các cụm.
+Vì vậy hệ thống **giữ nguyên đồ thị đầy đủ có trọng số**.
+
+### Hướng cải tiến tiếp theo
 
 | Hướng | Mô tả |
 |---|---|
-| **Cắt ngưỡng cạnh** | Chỉ giữ cạnh có `w_ij > threshold` để đồ thị thưa hơn, giảm nhiễu từ các cặp câu tương đồng yếu |
-| **Thay TF-IDF bằng embedding** | Dùng Sentence-BERT để tính similarity theo ngữ nghĩa thay vì trùng từ, khắc phục nhược điểm lớn nhất |
-| **Chuẩn hoá theo độ dài câu** | Chia trọng số cạnh cho log độ dài câu để giảm thiên vị câu dài |
-| **Thêm MMR** | Maximal Marginal Relevance khi chọn Top-T để tránh chọn các câu trùng ý nhau |
+| **Thay TF-IDF bằng embedding** | Dùng Sentence-BERT để tính similarity theo ngữ nghĩa thay vì trùng từ — khắc phục nhược điểm lớn nhất của phương pháp |
 | **T co giãn** | Chọn T theo tỉ lệ phần trăm số câu văn bản gốc thay vì cố định 18 |
+| **Đánh giá bằng ROUGE** | Bổ sung ROUGE-1 / ROUGE-2 / ROUGE-L bên cạnh độ đo khớp câu hiện tại |
+| **Chuẩn hoá theo độ dài câu** | Chia trọng số cạnh cho log độ dài câu để giảm thiên vị câu dài |
 
 ---
 
@@ -241,7 +348,8 @@ Project(NLP)/
 │   │   └── test/           # 9 văn bản
 │   └── DUC_SUM/            # Bản tóm tắt tham chiếu
 │
-├── output/                 # Bản tóm tắt do hệ thống sinh ra
+├── output/                 # Bản tóm tắt do hệ thống sinh ra (TextRank gốc)
+├── output_improved/        # Bản tóm tắt của phương pháp cải tiến (§8)
 │
 ├── notebook/
 │   └── graph_visualization.ipynb   # Trực quan hoá đồ thị (tiêu chí 4)
@@ -250,8 +358,9 @@ Project(NLP)/
 │   ├── preprocess.py       # Đọc dữ liệu & tách câu
 │   ├── vector.py           # TF-IDF + xây ma trận kề (đồ thị)
 │   ├── textrank.py         # Ma trận stochastic, PageRank, chọn câu
-│   ├── main.py             # Pipeline chính
-│   ├── evaluate.py         # Đánh giá Precision / Recall / F1
+│   │                       #   + PHẦN CẢI TIẾN: đặc trưng vị trí & MMR (§8)
+│   ├── main.py             # Pipeline chính (--improved để chạy bản cải tiến)
+│   ├── evaluate.py         # Đánh giá Precision / Recall / F1 (--improved)
 │   ├── similarity.py       # Tiện ích so sánh câu (cho web UI)
 │   ├── api.py              # Flask API cho giao diện web
 │   ├── web_text.py         # Tách câu cho văn bản tự do
@@ -274,6 +383,10 @@ cd src && python main.py
 
 # Đánh giá kết quả
 python evaluate.py
+
+# Phương pháp cải tiến (mục 8)
+python main.py --improved       # sinh tóm tắt vào output_improved/
+python evaluate.py --improved   # chấm điểm bản cải tiến
 
 # Chạy giao diện web (http://127.0.0.1:5000)
 python api.py

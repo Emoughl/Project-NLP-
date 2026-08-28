@@ -14,9 +14,8 @@ def get_all_files():
     return [file.name for file in files if file.is_file() and not file.name.startswith(".")]
 
 def split_sentences(text):
-    # Format loại bỏ thẻ <s>...</s>
     pattern = r"<s[^>]*>(.*?)</s>"
     sentences = re.findall(pattern, text, flags=re.DOTALL)
-    
+
     sentences = [re.sub(r"\s+", " ", s).strip() for s in sentences]
-    return sentences
+    return [s for s in sentences if s]

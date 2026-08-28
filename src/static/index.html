@@ -727,7 +727,7 @@
 
     <div class="ref-section">
       <button class="ref-toggle" id="refToggle">
-        <span>📎 Thêm tóm tắt tham chiếu để tính độ chính xác <span class="hint">(tuỳ chọn)</span></span>
+        <span>📎 Thêm tóm tắt tham chiếu để đo độ tương đồng <span class="hint">(tuỳ chọn)</span></span>
         <span class="chevron">›</span>
       </button>
       <div class="ref-body" id="refBody">
@@ -940,7 +940,7 @@ function accuracyCard(pct, hasDetail) {
       <div class="gauge" style="background:${gaugeGradient(pct)}">
         <span>${pct}%</span>
       </div>
-      <div class="label">Độ chính xác</div>
+      <div class="label">Độ tương đồng</div>
       <div class="sub">
         <span>Cosine TF-IDF so với tham chiếu</span>
       </div>
@@ -962,7 +962,7 @@ function openAccuracyModal() {
     : `<div class="chip-more">Không có từ khoá trùng nào.</div>`;
 
   modalBody.innerHTML = `
-    <h3>Độ chính xác — Cosine Similarity (TF-IDF)</h3>
+    <h3>Độ tương đồng với bản tham chiếu — Cosine Similarity (TF-IDF)</h3>
     <div class="modal-sub">Số liệu cụ thể tạo ra điểm ${pct}% bên dưới</div>
 
     <div class="modal-formula">Similarity = (A . B) / (|A| × |B|)<br>trong đó A, B là vector TF-IDF của bản tóm tắt hệ thống và bản tham chiếu</div>
@@ -1013,7 +1013,7 @@ function renderResult(data) {
     const pct = Math.round(data.accuracy * 100);
     accuracyHtml = `
       <div class="rouge-block">
-        <h3>📊 Độ chính xác (so với tham chiếu)${lastAccuracyDetail ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">— bấm vào thẻ để xem chi tiết</span>' : ""}</h3>
+        <h3>📊 Độ tương đồng Cosine TF-IDF với bản tham chiếu${lastAccuracyDetail ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">— bấm vào thẻ để xem chi tiết</span>' : ""}</h3>
         <div class="rouge-grid">
           ${accuracyCard(pct, !!lastAccuracyDetail)}
         </div>

@@ -1,17 +1,16 @@
 # Đánh giá kết quả tóm tắt TextRank (Top node T = 18)
 # Metrics: Precision, Recall, F1
-#
-# Chỉ những văn bản có bản tóm tắt tham chiếu (DUC_SUM) không rỗng mới được
-# chấm; số văn bản bị bỏ qua được in ra cuối để minh bạch.
 
+import sys
 from pathlib import Path
-import re
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from preprocess import split_sentences
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-OUTPUT_DIR = BASE_DIR / "output"
+USE_IMPROVED = "--improved" in sys.argv
+OUTPUT_DIR = BASE_DIR / ("output_improved" if USE_IMPROVED else "output")
 REFERENCE_DIR = BASE_DIR / "data" / "DUC_SUM"
 TRAIN_DIR = BASE_DIR / "data" / "DUC_TEXT" / "train"
 TEST_DIR = BASE_DIR / "data" / "DUC_TEXT" / "test"
@@ -22,14 +21,7 @@ def read_file(path):
         return f.read()
 
 
-def split_sentences(text):
-    """Tách câu từ thẻ <s>...</s>."""
-    sentences = re.findall(r"<s[^>]*>(.*?)</s>", text, flags=re.DOTALL)
-    return [re.sub(r"\s+", " ", s).strip() for s in sentences if s.strip()]
-
-
 def find_source_file(doc_name):
-    """Tìm file nguồn trong train/ hoặc test/."""
     for d in [TRAIN_DIR, TEST_DIR]:
         p = d / doc_name
         if p.exists():
@@ -38,7 +30,7 @@ def find_source_file(doc_name):
 
 
 def count_matched(system_sents, reference_sents, threshold=0.3):
-    """Đếm số câu trích được (đúng) bằng cosine similarity."""
+    #Đếm số câu trích được (đúng) bằng cosine similarityS
     if not system_sents or not reference_sents:
         return 0
 
@@ -68,6 +60,9 @@ def count_matched(system_sents, reference_sents, threshold=0.3):
 
 
 def main():
+    label = "TEXTRANK CẢI TIẾN (vị trí + MMR)" if USE_IMPROVED else "TEXTRANK GỐC"
+    print(f"ĐÁNH GIÁ: {label}  —  thư mục {OUTPUT_DIR.name}/\n")
+
     all_prec, all_rec, all_f1 = [], [], []
     skipped = []
 

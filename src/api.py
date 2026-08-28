@@ -94,8 +94,11 @@ def summarize():
         for i, s in enumerate(sentences)
     ]
 
-    # Độ chính xác — Cosine TF-IDF giữa bản tóm tắt hệ thống và
-    # bản tham chiếu, cùng cách tính với evaluate.py.
+    # Độ TƯƠNG ĐỒNG (không phải Precision/Recall) — Cosine TF-IDF giữa bản
+    # tóm tắt hệ thống và bản tham chiếu. Lưu ý: TF-IDF ở đây chỉ fit trên 2
+    # văn bản nên IDF gần như không có tác dụng phân biệt; con số này chỉ để
+    # tham khảo trực quan, độ đo chính thức của đồ án là P/R/F1 trong
+    # evaluate.py (Precision / Recall / F1).
     accuracy = None
     accuracy_warning = None
     accuracy_detail = None
