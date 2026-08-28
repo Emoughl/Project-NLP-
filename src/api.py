@@ -21,12 +21,8 @@ try:
 except ImportError:
     _HAS_CORS = False
 
-from vector import (
-    build_tfidf_matrix,
-    calculate_similarity_matrix,
-    extract_additional_features,
-)
-from textrank import apply_feature_weights, calculate_pagerank_numpy
+from vector import build_tfidf_matrix, calculate_similarity_matrix
+from textrank import calculate_pagerank_numpy
 from web_text import split_sentences_generic, clean_reference_text
 from similarity import sentence_similarity, keyword_overlap
 
@@ -79,12 +75,8 @@ def summarize():
                      "Hãy thử dán một đoạn văn bản dài hơn."
         }), 400
 
-    # Trích đặc trưng bổ sung (độ dài câu, vị trí câu, số liệu, viết hoa)
-    # và gộp trọng số vào đồ thị trước khi xếp hạng — giống hệt main.py.
-    extra_features = extract_additional_features(sentences)
-    enhanced_matrix = apply_feature_weights(similarity_matrix, extra_features)
-
-    scores = calculate_pagerank_numpy(enhanced_matrix)
+    # Xếp hạng câu trên đồ thị bằng PageRank — giống hệt main.py.
+    scores = calculate_pagerank_numpy(similarity_matrix)
 
     ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
     top_indices = sorted(idx for idx, _ in ranked[:top_n])

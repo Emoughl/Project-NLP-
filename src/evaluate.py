@@ -1,5 +1,8 @@
 # Đánh giá kết quả tóm tắt TextRank (Top node T = 18)
-# Metrics: Accuracy, Precision, Recall, F1
+# Metrics: Precision, Recall, F1
+#
+# Chỉ những văn bản có bản tóm tắt tham chiếu (DUC_SUM) không rỗng mới được
+# chấm; số văn bản bị bỏ qua được in ra cuối để minh bạch.
 
 from pathlib import Path
 import re
@@ -65,17 +68,20 @@ def count_matched(system_sents, reference_sents, threshold=0.3):
 
 
 def main():
-    all_acc, all_prec, all_rec, all_f1 = [], [], [], []
+    all_prec, all_rec, all_f1 = [], [], []
+    skipped = []
 
     for summary_file in sorted(OUTPUT_DIR.glob("*_summary.txt")):
         doc_name = summary_file.stem.replace("_summary", "")
 
         reference_file = REFERENCE_DIR / doc_name
         if not reference_file.exists() or reference_file.stat().st_size == 0:
+            skipped.append((doc_name, "thiếu/rỗng bản tham chiếu DUC_SUM"))
             continue
 
         source_file = find_source_file(doc_name)
         if source_file is None:
+            skipped.append((doc_name, "không tìm thấy văn bản nguồn"))
             continue
 
         source_sents = split_sentences(read_file(source_file))
@@ -84,12 +90,10 @@ def main():
         sys_sents = [s.strip() for s in sys_text.split("\n") if s.strip()]
 
         if not source_sents or not ref_sents or not sys_sents:
+            skipped.append((doc_name, "không tách được câu"))
             continue
 
         correct = count_matched(sys_sents, ref_sents)
-
-        # Acc  = #câu trích được (đúng) / #câu được gán nhãn (tổng câu nguồn)
-        acc = correct / len(source_sents) if source_sents else 0
 
         # Precision = #câu trích được (đúng) / #câu trích được
         prec = correct / len(sys_sents) if sys_sents else 0
@@ -100,19 +104,24 @@ def main():
         # F1 = 2 * (P * R) / (P + R)
         f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0
 
-        all_acc.append(acc)
         all_prec.append(prec)
         all_rec.append(rec)
         all_f1.append(f1)
 
         print(f"  {doc_name:12s}  P={prec:.3f}  R={rec:.3f}  F1={f1:.1%}  (Giữa 2 file output có {correct} đúng / tổng {len(sys_sents)})")
 
-    if all_acc:
-        print(f"\n  TRUNG BÌNH ({len(all_acc)} văn bản, Top T = 18):")
-        print(f"    Accuracy  = {np.mean(all_acc):.4f}  ({np.mean(all_acc)*100:.1f}%)")
+    total = len(all_prec) + len(skipped)
+
+    if all_prec:
+        print(f"\n  TRUNG BÌNH ({len(all_prec)}/{total} văn bản được chấm, Top T = 18):")
         print(f"    Precision = {np.mean(all_prec):.4f}  ({np.mean(all_prec)*100:.1f}%)")
         print(f"    Recall    = {np.mean(all_rec):.4f}  ({np.mean(all_rec)*100:.1f}%)")
         print(f"    F1        = {np.mean(all_f1):.4f}  ({np.mean(all_f1)*100:.1f}%)")
+
+    if skipped:
+        print(f"\n  BỎ QUA {len(skipped)}/{total} văn bản:")
+        for doc_name, reason in skipped:
+            print(f"    {doc_name:12s}  — {reason}")
 
 
 if __name__ == "__main__":
